@@ -60,13 +60,13 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     // or a user-defined array in the platform config.
     const exampleDevices = [
       {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
+        exampleUniqueId: 'abc1234',
+        exampleDisplayName: 'Left Blind',
       },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
+      // {
+      //   exampleUniqueId: 'abc8790',
+      //   exampleDisplayName: 'Right Blind',
+      // },
     ];
 
     // loop over the discovered devices and register each one if it has not already been registered

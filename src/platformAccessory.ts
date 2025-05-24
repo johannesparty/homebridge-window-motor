@@ -31,7 +31,8 @@ export class WindowMotorAccessory {
 
     // get the LightBulb service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.Lightbulb) || this.accessory.addService(this.platform.Service.Lightbulb);
+    this.service = this.accessory.getService(this.platform.Service.Window) 
+                || this.accessory.addService(this.platform.Service.Window);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -40,32 +41,18 @@ export class WindowMotorAccessory {
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/Lightbulb
 
-    // register handlers for the On/Off Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.setOn.bind(this)) // SET - bind to the `setOn` method below
-      .onGet(this.getOn.bind(this)); // GET - bind to the `getOn` method below
+    // register handlers for CurrentPosition Characteristic
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentPosition)
+      .onGet(this.getCurrentPosition.bind(this));
 
-    // register handlers for the Brightness Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.Brightness)
-      .onSet(this.setBrightness.bind(this)); // SET - bind to the `setBrightness` method below
+    // register handlers for TargetPosition Characteristic
+    this.service.getCharacteristic(this.platform.Characteristic.TargetPosition)
+      .onGet(this.getTargetPosition.bind(this))
+      .onSet(this.setTargetPosition.bind(this)); 
 
-    /**
-     * Creating multiple services of the same type.
-     *
-     * To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-     * when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-     * this.accessory.getService('NAME') || this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE_ID');
-     *
-     * The USER_DEFINED_SUBTYPE must be unique to the platform accessory (if you platform exposes multiple accessories, each accessory
-     * can use the same subtype id.)
-     */
-
-    // Example: add two "motion sensor" services to the accessory
-    const motionSensorOneService = this.accessory.getService('Motion Sensor One Name')
-      || this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor One Name', 'YourUniqueIdentifier-1');
-
-    const motionSensorTwoService = this.accessory.getService('Motion Sensor Two Name')
-      || this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor Two Name', 'YourUniqueIdentifier-2');
+    // register 
+    this.service.getCharacteristic(this.platform.Characteristic.PositionState)
+      .onGet(this.getPositionState.bind(this));
 
     /**
      * Updating characteristics values asynchronously.
@@ -76,6 +63,7 @@ export class WindowMotorAccessory {
      * the `updateCharacteristic` method.
      *
      */
+    /*
     let motionDetected = false;
     setInterval(() => {
       // EXAMPLE - inverse the trigger
@@ -88,54 +76,45 @@ export class WindowMotorAccessory {
       this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
       this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
     }, 10000);
+  */
   }
 
-  /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
-   */
-  async setOn(value: CharacteristicValue) {
-    // implement your own code to turn your device on/off
-    this.exampleStates.On = value as boolean;
-
-    this.platform.log.debug('Set Characteristic On ->', value);
-  }
-
-  /**
-   * Handle the "GET" requests from HomeKit
-   * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
-   *
-   * GET requests should return as fast as possible. A long delay here will result in
-   * HomeKit being unresponsive and a bad user experience in general.
-   *
-   * If your device takes time to respond you should update the status of your device
-   * asynchronously instead using the `updateCharacteristic` method instead.
-   * In this case, you may decide not to implement `onGet` handlers, which may speed up
-   * the responsiveness of your device in the Home app.
-
-   * @example
-   * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
-   */
-  async getOn(): Promise<CharacteristicValue> {
+ 
+  // CurrentPosition is the position of the device, e.g. 0.0 for closed, 1.0 for open
+  async getCurrentPosition(): Promise<CharacteristicValue> {
     // implement your own code to check if the device is on
-    const isOn = this.exampleStates.On;
 
-    this.platform.log.debug('Get Characteristic On ->', isOn);
+    const currentPosition = 0.0;
+    this.platform.log.debug('Get Characteristic CurrentPoisition ->', currentPosition);
 
     // if you need to return an error to show the device as "Not Responding" in the Home app:
     // throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
 
-    return isOn;
+    return currentPosition;
   }
 
-  /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for example, changing the Brightness
-   */
-  async setBrightness(value: CharacteristicValue) {
-    // implement your own code to set the brightness
-    this.exampleStates.Brightness = value as number;
-
-    this.platform.log.debug('Set Characteristic Brightness -> ', value);
+  // TargetPosition is the position that the device should move to when the user sets it
+  // 0.0 is closed, 1.0 is open
+  async getTargetPosition(): Promise<CharacteristicValue> {
+    // implement your own code to check the target position of the device
+    const targetPosition = 0.0;
+    this.platform.log.debug('Get Characteristic TargetPosition ->', targetPosition);
+    return targetPosition;
   }
+
+  async setTargetPosition(value: CharacteristicValue) {
+    // implement your own code to set the target position of the device
+    // e.g. send a command to the device to move to the specified position 
+    this.platform.log.debug('Set Characteristic TargetPosition ->', value);
+  }
+
+  // PositionState is the state of the device, e.g. moving, stopped, etc.
+  // values are 0 for STOPPED, 1 for INCREASING, 2 for DECREASING
+  async getPositionState(): Promise<CharacteristicValue> {
+    // implement your own code to check the position state of the device
+    const positionState = this.platform.Characteristic.PositionState.STOPPED;
+    this.platform.log.debug('Get Characteristic PositionState ->', positionState);
+    return positionState;
+  }
+
 }
