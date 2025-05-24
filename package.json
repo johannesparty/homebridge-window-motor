@@ -16,7 +16,10 @@
     "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
   },
   "keywords": [
-    "window-motor-homebridge-plugin"
+    "homebridge-plugin",
+    "window-motor",
+    "esphome",    
+    "homebridge-window-motor"
   ],
   "main": "dist/index.js",
   "engines": {
@@ -42,5 +45,12 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.1"
+  },
+  "homebridge": {
+    "platforms": [
+      {
+        "platform": "WindowMotorPlugin"
+      }
+    ]
   }
 }
