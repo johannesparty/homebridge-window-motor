@@ -62,6 +62,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       {
         exampleUniqueId: 'abc1234',
         exampleDisplayName: 'Left Blind',
+        url: 'http://esp32-relay-x2-f604c0.local/'
       },
       // {
       //   exampleUniqueId: 'abc8790',

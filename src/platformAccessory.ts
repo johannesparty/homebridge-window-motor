@@ -1,6 +1,6 @@
-import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
+import { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
-import type { WindowMotorPlatform } from './platform.js';
+import { WindowMotorPlatform } from './platform.js';
 
 /**
  * Platform Accessory
@@ -14,9 +14,10 @@ export class WindowMotorAccessory {
    * These are just used to create a working example
    * You should implement your own code to track the state of your accessory
    */
-  private exampleStates = {
-    On: false,
-    Brightness: 100,
+  private windowState = {
+    currentPosition: 0.0, // 0.0 for closed, 1.0 for open
+    targetPosition : 0.0, // 0.0 for closed, 1.0 for open
+    positionState: 2, // 2 for STOPPED, 1 for INCREASING, 0 for DECREASING
   };
 
   constructor(
@@ -84,7 +85,7 @@ export class WindowMotorAccessory {
   async getCurrentPosition(): Promise<CharacteristicValue> {
     // implement your own code to check if the device is on
 
-    const currentPosition = 0.0;
+    const currentPosition = this.windowState.currentPosition;
     this.platform.log.debug('Get Characteristic CurrentPoisition ->', currentPosition);
 
     // if you need to return an error to show the device as "Not Responding" in the Home app:
@@ -97,7 +98,7 @@ export class WindowMotorAccessory {
   // 0.0 is closed, 1.0 is open
   async getTargetPosition(): Promise<CharacteristicValue> {
     // implement your own code to check the target position of the device
-    const targetPosition = 0.0;
+    const targetPosition = this.windowState.targetPosition;
     this.platform.log.debug('Get Characteristic TargetPosition ->', targetPosition);
     return targetPosition;
   }
@@ -106,13 +107,37 @@ export class WindowMotorAccessory {
     // implement your own code to set the target position of the device
     // e.g. send a command to the device to move to the specified position 
     this.platform.log.debug('Set Characteristic TargetPosition ->', value);
+
+    if (value === 0) {
+      // code to close the window
+      this.platform.log.info('Closing the window');
+      await fetch('http://192.168.30.187/number/target_position/set?value=0', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      });
+    } else {
+      // code to open the window
+      this.platform.log.info('Opening the window');
+      await fetch('http://192.168.30.187/number/target_position/set?value=100', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    this.windowState.targetPosition = value.valueOf() as number;
+    this.windowState.currentPosition = value.valueOf() as number; // update current position to match target position
+    this.windowState.positionState = this.platform.Characteristic.PositionState.STOPPED; // update position state to stopped
+    // update the characteristics in HomeKit
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentPosition, this.windowState.currentPosition);
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetPosition, this.windowState.targetPosition);
+    this.service.updateCharacteristic(this.platform.Characteristic.PositionState, this.windowState.positionState);
   }
+
 
   // PositionState is the state of the device, e.g. moving, stopped, etc.
   // values are 0 for STOPPED, 1 for INCREASING, 2 for DECREASING
   async getPositionState(): Promise<CharacteristicValue> {
     // implement your own code to check the position state of the device
-    const positionState = this.platform.Characteristic.PositionState.STOPPED;
+    const positionState = this.windowState.positionState;
     this.platform.log.debug('Get Characteristic PositionState ->', positionState);
     return positionState;
   }
