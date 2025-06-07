@@ -3,6 +3,11 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 import { WindowMotorAccessory } from './platformAccessory.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 
+import EventSource from 'eventsource';
+// import net from 'node:net'
+//import util from 'node:util'
+
+
 /**
  * HomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
@@ -62,7 +67,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       {
         exampleUniqueId: 'abc1234',
         exampleDisplayName: 'Left Blind',
-        url: 'http://esp32-relay-x2-f604c0.local/'
+        url: 'http://window-motor-lr-left.local/',
       },
       // {
       //   exampleUniqueId: 'abc8790',

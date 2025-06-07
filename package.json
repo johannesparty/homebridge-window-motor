@@ -18,7 +18,7 @@
   "keywords": [
     "homebridge-plugin",
     "window-motor",
-    "esphome",    
+    "esphome",
     "homebridge-window-motor"
   ],
   "main": "dist/index.js",
@@ -33,6 +33,7 @@
     "watch": "npm run build && npm link && nodemon"
   },
   "dependencies": {
+    "@types/eventsource": "^1.1.15",
     "homebridge-lib": "^7.1.4"
   },
   "devDependencies": {
