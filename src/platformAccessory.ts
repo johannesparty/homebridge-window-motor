@@ -2,6 +2,8 @@ import { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
 import { WindowMotorPlatform } from './platform.js';
 
+// const temp_url = 'http://window-motor-lr-left.local/';
+const temp_url = 'http://192.168.30.187/';
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
@@ -86,7 +88,7 @@ export class WindowMotorAccessory {
     // implement your own code to check if the device is on
 
     const currentPosition = this.windowState.currentPosition;
-    this.platform.log.debug('Get Characteristic CurrentPoisition ->', currentPosition);
+    this.platform.log.debug('Get Characteristic CurrentPosition ->', currentPosition);
 
     // if you need to return an error to show the device as "Not Responding" in the Home app:
     // throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -110,15 +112,17 @@ export class WindowMotorAccessory {
 
     if (value === 0) {
       // code to close the window
-      this.platform.log.info('Closing the window');
-      await fetch('http://192.168.30.187/number/target_position/set?value=0', {
+      const url = temp_url + 'number/bed_1_back_window_left_target_position/set?value=0';
+      this.platform.log.info('Closing the window: POST '+url);
+      await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
       });
     } else {
       // code to open the window
-      this.platform.log.info('Opening the window');
-      await fetch('http://192.168.30.187/number/target_position/set?value=100', {
+      const url = temp_url + 'number/bed_1_back_window_left_target_position/set?value=100';
+      this.platform.log.info('Opening the window: POST '+url);
+      await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
       });

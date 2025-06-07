@@ -64,6 +64,7 @@ wifi:
 
 web_server:
   port: 80
+  include_internal: true
 
 captive_portal:
   
@@ -103,7 +104,11 @@ number:
     on_value:
       then:
         - logger.log: "on_value called"
-        - logger.log: "target=${target_position}, current=${current_position}, closed=${window_closed}"
+        - logger.log:
+            format: |-
+              return "target=" + to_string(id(target_position).state) +
+                    ", current=" + to_string(id(current_position).state) +
+                    ", closed=" + (id(window_closed).state ? "true" : "false");
         - if:
             condition:
               lambda: 'return id(target_position).state != 200;'
