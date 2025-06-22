@@ -1,0 +1,8 @@
+substitutions:
+    device_name: "window-motor-test-1"
+    device_entity: 'window-motor-test-1'
+    friendly_name: 'Window Motor Test 1'
+    operation_duration: 5s
+    command_duration: 1s
+    
+<<: !include window-motor-base2.yaml
