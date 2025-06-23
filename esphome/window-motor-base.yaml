@@ -1,3 +1,4 @@
+# see https://github.com/Xinyuan-LilyGO/LilyGo-T-Relay/issues/24
 
 esphome:
   name: ${device_name}                       # device name with hyphens "window-motor-bedroom-1-back-left"
@@ -5,35 +6,40 @@ esphome:
   comment: 'Template Window Motor Control'        
   project:
     name: "window-motor.esphome"
-    version: "2025.6.1"
+    version: "2025.6.9"
   name_add_mac_suffix: false
   on_boot:
-    priority: -100
-    then:
-      - logger.log: "starting on_boot"
-      - if:
-          condition:
-            binary_sensor.is_on: window_closed
-          then:
-            - logger.log: "setting initial position 0"
-            - number.set:
-                id: current_position
-                value: 0
-            - number.set:
-                id: target_position
-                value: 0
-          else:
-            - logger.log: "setting initial position 100"
-            - number.set:
-                id: current_position
-                value: 100
-            - number.set:
-                id: target_position
-                value: 100
-      - text_sensor.template.publish:
-          id: position_state
-          state: "STOPPED"
-      - logger.log: "finished on_boot"
+    - priority: -100  
+      then:
+        - switch.turn_off: output_open 
+        - switch.turn_off: output_close
+        - logger.log: "on_boot -100 (very early)"
+    - priority: 800
+      then:
+        - logger.log: "on_boot 800 (before main loop)"
+        - if:
+            condition:
+              binary_sensor.is_on: window_closed
+            then:
+              - logger.log: "setting initial position 0"
+              - number.set:
+                  id: current_position
+                  value: 0
+              - number.set:
+                  id: target_position
+                  value: 0
+            else:
+              - logger.log: "setting initial position 100"
+              - number.set:
+                  id: current_position
+                  value: 100
+              - number.set:
+                  id: target_position
+                  value: 100
+        - text_sensor.template.publish:
+            id: position_state
+            state: "STOPPED"
+        - logger.log: "finished on_boot"
 
 esp32:
   board: esp32dev
@@ -41,7 +47,7 @@ esp32:
 
 # Enable logging
 logger:
-  level: VERBOSE
+  level: DEBUG
 
 # Enable Home Assistant API
 api:
@@ -70,12 +76,18 @@ captive_portal:
   
 switch:
   - platform: gpio
-    pin: GPIO16
+    pin: 
+      number: GPIO16
+      # mode: INPUT_PULLUP # Use pull-up to avoid floating state
+      inverted: true
     id: output_open
     name: "${friendly_name} Open Relay"
     restore_mode: ALWAYS_OFF
   - platform: gpio
-    pin: GPIO17
+    pin: 
+      number: GPIO17
+      # mode: INPUT_PULLUP # Use pull-up to avoid floating state
+      inverted: true
     id: output_close
     name: "${friendly_name} Close Relay"
     restore_mode: ALWAYS_OFF
@@ -104,11 +116,11 @@ number:
     on_value:
       then:
         - logger.log: "on_value called"
-        - logger.log:
-            format: |-
-              return "target=" + to_string(id(target_position).state) +
-                    ", current=" + to_string(id(current_position).state) +
-                    ", closed=" + (id(window_closed).state ? "true" : "false");
+        - lambda: |-
+            ESP_LOGI("window", "target=%f, current=%f, closed=%s",
+                    id(target_position).state,
+                    id(current_position).state,
+                    id(window_closed).state ? "true" : "false");
         - if:
             condition:
               lambda: 'return id(target_position).state != 200;'

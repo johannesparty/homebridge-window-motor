@@ -1,0 +1,23 @@
+/* Originally Copyright(C) 2017-2025, HJD (https://github.com/hjdhjd). All rights reserved.
+ *
+ * server.js: homebridge-window-motor webUI server API.
+ */
+'use strict';
+
+import { featureOptionCategories, featureOptions } from '../dist/window-motor-options.js';
+import { HomebridgePluginUiServer } from '@homebridge/plugin-ui-utils';
+
+class PluginUiServer extends HomebridgePluginUiServer {
+
+  constructor() {
+
+    super();
+
+    // Register getOptions() with the Homebridge server API.
+    this.onRequest('/getOptions', () => ({ categories: featureOptionCategories, options: featureOptions }));
+
+    this.ready();
+  }
+}
+
+(() => new PluginUiServer())();
