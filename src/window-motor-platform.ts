@@ -147,6 +147,8 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       return;
     }
 
+    console.log('Discovered service: ', util.inspect(service, { colors: true, depth: null, sorted: true }));
+
     // We grab the first address provided for the ESPHome device.
     const address = service.addresses[0];
 

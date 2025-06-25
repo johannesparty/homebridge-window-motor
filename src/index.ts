@@ -1,14 +1,9 @@
 
-import { PLATFORM_NAME } from './settings.js';
+import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 import type { API } from 'homebridge';
 import { WindowMotorPlatform } from './window-motor-platform.js';
 
-/**
- * This method registers the platform with Homebridge
- */
-
-export default (api: API) => {
-  // api.registerPlatform('WindowMotorPlugin', 'Window Motor Plugin', WindowMotorPlatform);
-  api.registerPlatform('WindowMotorPlugin', WindowMotorPlatform);
+// Register our platform with Homebridge.
+export default (api: API): void => {
+  api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, WindowMotorPlatform);
 };
-

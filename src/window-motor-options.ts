@@ -1,5 +1,5 @@
 import { FeatureOptionEntry } from 'homebridge-plugin-utils';
-import { WINDOW_MOTOR_OPENCLOSE_DURATION } from './settings.js';
+import { WINDOW_MOTOR_OPENCLOSE_DURATION, WINDOW_MOTOR_RELAY_DURATION } from './settings.js';
 // Plugin configuration options.
 export type WindowMotorOptions = Partial<{
 
@@ -34,6 +34,7 @@ export const featureOptions: { [index: string]: FeatureOptionEntry[] } = {
     { default: true,  description: 'Motor includes connected window closed sensor.', name: 'Builtin.Closed.Sensor' },
     { default: false, description: 'Add a contact sensor accessory for window closed.', name: 'Homekit.Switch.WindowClosed' },
     { default: true, defaultValue: WINDOW_MOTOR_OPENCLOSE_DURATION, description: 'Time to open or close window', name: 'OpenCloseDuration' },
+    { default: true, defaultValue: WINDOW_MOTOR_RELAY_DURATION, description: 'Time to operate relay for open and close', name: 'RelayDuration' },
   ],
 
 };

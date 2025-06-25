@@ -1,8 +1,16 @@
 # Ignore compiled code
 dist
 
-# ------------- Defaults ------------- #
+# Ignore npmrc.
+.npmrc
+
+# Ignore macOS attribute files.
 .DS_Store
+
+# Ignore generated files.
+homebridge-ui/public/lib
+
+# ------------- Defaults ------------- #
 
 # Logs
 logs
@@ -119,8 +127,3 @@ dist
 .yarn/unplugged
 .yarn/build-state.yml
 .pnp.*
-
-# Webstorm
-.idea
-
-/test/hbConfig

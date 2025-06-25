@@ -2,7 +2,7 @@
   "pluginAlias": "WindowMotorPlugin",
   "pluginType": "platform",
   "singular": true,
-  "strictValidation": false,
+  "customUi": true,
   "schema": {
     "type": "object",
     "properties": {

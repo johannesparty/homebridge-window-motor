@@ -1,6 +1,6 @@
 import { API, CharacteristicValue, HAP, PlatformAccessory } from 'homebridge';
 import { HomebridgePluginLogging, acquireService, validService, validateName } from 'homebridge-plugin-utils';
-import { WINDOW_MOTOR_OPENCLOSE_DURATION } from './settings.js';
+import { WINDOW_MOTOR_OPENCLOSE_DURATION, WINDOW_MOTOR_RELAY_DURATION } from './settings.js';
 import { WindowMotorDevice, WindowMotorReservedNames } from './window-motor-types.js';
 import { WindowMotorOptions } from './window-motor-options.js';
 import { WindowMotorPlatform } from './window-motor-platform.js';
@@ -22,6 +22,7 @@ interface EspHomeEvent {
 interface WindowMotorHints {
   logWindowMotor: boolean,
   openCloseDuration: number,
+  relayDuration: number,
   builtinContactSensor: boolean,
   homekitWindowClosedSwitch: boolean,
   readOnly: boolean, // not sure how useful this is
@@ -107,7 +108,7 @@ export class WindowMotorAccessory {
     this.hints.homekitWindowClosedSwitch = this.hasFeature('Window.Homekit.Switch.WindowClosed');
     this.hints.builtinContactSensor = this.hasFeature('Window.Builtin.Closed.Sensor');
     this.hints.openCloseDuration = this.platform.featureOptions.getInteger('Window.OpenCloseDuration', this.device.mac) ?? WINDOW_MOTOR_OPENCLOSE_DURATION;
-
+    this.hints.relayDuration = this.platform.featureOptions.getInteger('Window.RelayDuration', this.device.mac) ?? WINDOW_MOTOR_RELAY_DURATION;
     if(this.hints.readOnly) {
       this.log.info('Window opener is read-only. The opener will not respond to open and close requests from HomeKit.');
     }
@@ -220,8 +221,8 @@ export class WindowMotorAccessory {
     const target_position = value as number;
 
     // If we have an invalid target state, we're done.
-    if(target_position !== 0 && target_position !== 1) {
-      this.log.error('target position must be 0 or 1: %s.', target_position);
+    if(target_position !== 0 && target_position !== 100) {
+      this.log.error('target position must be 0 or 100: %s.', target_position);
       return false;
     }
 
@@ -237,15 +238,15 @@ export class WindowMotorAccessory {
       });
     }
 
-    // If we are already opening or closing the garage door, we assume the user wants to stop the garage door opener at it's current location.
+    // If we are already opening or closing the windowr, we assume the user wants to stop the garage door opener at it's current location.
     // todo
 
-    // Set the door state, assuming we're not already there.
+    // Set the window state, assuming we're not already there.
 
-    this.log.debug('User-initiated door position change: (' + target_position.toString() + '%)');
+    this.log.debug('User-initiated window position change: (' + target_position.toString() + '%)');
 
     // Execute the command.
-    void this.command('door', target_position === 0 ? 'close' : 'open');
+    void this.command('window', target_position === 0 ? 'close' : 'open');
 
     return true;
   }
@@ -273,7 +274,7 @@ export class WindowMotorAccessory {
 
       break;
 
-    case 'window_cover':
+    case 'cover-window_cover':
 
       // Determine what action the opener is currently executing.
       switch(event.current_operation) {
@@ -286,15 +287,15 @@ export class WindowMotorAccessory {
       case 'IDLE':
 
         // We're in a stopped rather than open state if the door is in a position greater than 0.
-        event.current_operation = ((event.state === 'OPEN') && (event.position !== undefined) && (event.position > 0) && (event.position < 1)) ? 'stopped' :
-          event.state.toLowerCase();
-
+        // event.current_operation = ((event.state === 'OPEN') && (event.position !== undefined) && (event.position > 0) && (event.position < 1)) ? 'stopped' :
+        //   event.state.toLowerCase();
+        // event.current_operation = event.current_operation.toLowerCase();
+        // event.current_operation = (event.state === 'OPEN') ? 'open' : 'closed';
+        event.current_operation = event.state.toLowerCase();
         break;
 
       default:
-
         this.log.error('Unknown door operation detected: %s.', event.current_operation);
-
         return;
       }
 
@@ -311,13 +312,18 @@ export class WindowMotorAccessory {
         this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.OPENING;
         break;
 
-      case 'idle':
+      case 'open':
 
         this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.STOPPED;
         break;
 
-      default:
+      case 'closed':
 
+        this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.CLOSED;
+        break;
+
+      default:
+        this.log.error('Unknown door operation detected: %s.', event.current_operation);
         this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.CLOSED;
         break;
       }

@@ -30,3 +30,6 @@ export const WINDOW_MOTOR_HEARTBEAT_INTERVAL = 300;
 
 // duration, in seconds, default time for window open or close
 export const WINDOW_MOTOR_OPENCLOSE_DURATION = 30;
+
+// duration, in seconds, for relay operation
+export const WINDOW_MOTOR_RELAY_DURATION = 5;

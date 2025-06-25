@@ -1,9 +1,10 @@
 {
   "name": "homebridge-window-motor",
-  "displayName": "Window Motor Plugin using ESPHome",
+  "displayName": "Homebridge Window Motor",
+  "icon": "homebridge-window-motor.png",
   "type": "module",
-  "version": "1.0.0",
-  "private": true,
+  "version": "0.6.24a",
+  "private": false,
   "description": "A short description about what your plugin does.",
   "author": "Johannes Schmidt",
   "license": "TBD",
