@@ -1,2 +1,34 @@
-   esphome compile window-motor-test-1.yaml \
-&& esphome upload window-motor-test-1.yaml --device window-motor-test-1.local.
+#!/bin/bash
+set -e  # Exit on unhandled errors
+
+CONFIGS=(
+  "window-motor-test-1"
+  "window-motor-bed1-left"
+  "window-motor-bed1-right"
+)
+
+# Determine which configs to process
+if [[ "$#" -eq 0 ]]; then
+  SELECTED_CONFIGS=("${CONFIGS[0]}")
+elif [[ "$1" == "all" ]]; then
+  SELECTED_CONFIGS=("${CONFIGS[@]}")
+else
+  SELECTED_CONFIGS=("$@")
+fi
+
+# Compile and upload each config
+for config in "${SELECTED_CONFIGS[@]}"; do
+  echo "🔧 Compiling: $config.yaml"
+  if ! esphome compile "$config.yaml"; then
+    echo "❌ Compile failed for $config.yaml"
+    exit 1
+  fi
+
+  echo "📤 Uploading: $config.yaml to ${config}.local."
+  if ! esphome upload "$config.yaml" --device "${config}.local."; then
+    echo "❌ Upload failed for $config.yaml"
+    exit 1
+  fi
+
+  echo "✅ Success: $config"
+done

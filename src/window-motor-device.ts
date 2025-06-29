@@ -146,27 +146,13 @@ export class WindowMotorAccessory {
     this.log.info('configuringWindowService for %s', this.name);
 
     // Acquire the service.
-    // const service = acquireService(this.hap, this.accessory, this.hap.Service.WindowCovering, this.name);
-    let service = this.accessory.getService(this.hap.Service.WindowCovering);
-    if(!service) {
-      this.log.info('WindowCovering service did not exist so creating it.');
-      service = this.accessory.addService(this.hap.Service.WindowCovering, this.name);
-    }
-
-
+    const service = acquireService(this.hap, this.accessory, this.hap.Service.WindowCovering, this.name);
     if(!service) {
       this.log.error('Unable to add the window service.');
       return false;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.log.info(`< create service with abc: ${(service as any).abc}`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).abc = new Date().toISOString(); // for testing perms
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.log.info(`> create service with abc: ${(service as any).abc}`);
-
-    
+  
     // Set the initial current and target door states to closed since windowmotor doesn't tell us initial state on startup.
     service.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
     service.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
@@ -286,33 +272,24 @@ export class WindowMotorAccessory {
       this.log.error('Unable to get Window Service');
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.log.info(`windowService.abc is ${(windowService as any).abc}`);
 
+  
     // eslint-disable-next-line max-len
-    this.log.error(`updateCharacteristics:\n\tPositionState:   ${this.status.windowPositionState}\n\tCurrentPosition: ${this.status.windowCurrentPosition}\n\tTargetPosition:  ${this.status.windowTargetPosition}`);
+    this.log.info(`updateCharacteristics:\n\tPositionState:   ${this.status.windowPositionState}\n\tCurrentPosition: ${this.status.windowCurrentPosition}\n\tTargetPosition:  ${this.status.windowTargetPosition}`);
 
-    this.log.error(`< PositionState is   ${windowService.getCharacteristic(this.hap.Characteristic.PositionState).value}`);
-    this.log.error(`< CurrentPosition is ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value}`);
-    this.log.error(`< TargetPosition is  ${windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
-
-    // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
-    // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
-    // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
+    this.log.info(`< PositionState is   ${windowService.getCharacteristic(this.hap.Characteristic.PositionState).value}`);
+    this.log.info(`< CurrentPosition is ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value}`);
+    this.log.info(`< TargetPosition is  ${windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
 
     windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
     windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
     windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
 
-    windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).sendEventNotification(this.status.windowTargetPosition);
-    windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).sendEventNotification(this.status.windowCurrentPosition);
-    windowService.getCharacteristic(this.hap.Characteristic.PositionState).sendEventNotification(this.status.windowPositionState);
-
-    this.log.error(`> PositionState is   ${windowService.getCharacteristic(this.hap.Characteristic.PositionState).value}`);
-    this.log.error(`> CurrentPosition is ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value}`);
-    this.log.error(`> TargetPosition is  ${windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
+    this.log.info(`> PositionState is   ${windowService.getCharacteristic(this.hap.Characteristic.PositionState).value}`);
+    this.log.info(`> CurrentPosition is ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value}`);
+    this.log.info(`> TargetPosition is  ${windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
     // eslint-disable-next-line max-len
-    this.log.error(`  Target Position == Current Position? ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value === windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
+    this.log.info(`  Target Position == Current Position? ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value === windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
   }
 
 
@@ -337,8 +314,7 @@ export class WindowMotorAccessory {
     if (event.id !== 'availability') {
       this.log.info('got updateState with ' + util.inspect(event, { colors: true, depth: null, sorted: true }));
     }
-    const position = (event.position ?? 0) * 100;
-
+    this.log.info(`event.id: ${event.id}, event.state: ${event.state}, event.position: ${event.position}, event.value: ${event.value}`);
     switch(event.id) {
 
     case 'availability':
@@ -353,143 +329,58 @@ export class WindowMotorAccessory {
 
       break;
 
-    case 'cover-window_cover':
+    case 'cover-window_cover': {
 
-      // Determine what action the opener is currently executing.
-      switch(event.current_operation) {
+      const position = (event.position ?? 0) * 100;
 
-      case 'CLOSING':
-      case 'OPENING':
-        event.current_operation = event.current_operation.toLowerCase();
-        break;
-
-      case 'IDLE':
-
-        // We're in a stopped rather than open state if the door is in a position greater than 0.
-        // event.current_operation = ((event.state === 'OPEN') && (event.position !== undefined) && (event.position > 0) && (event.position < 1)) ? 'stopped' :
-        //   event.state.toLowerCase();
-        // event.current_operation = event.current_operation.toLowerCase();
-        // event.current_operation = (event.state === 'OPEN') ? 'open' : 'closed';
-        event.current_operation = event.state.toLowerCase();
-        break;
-
-      default:
-        this.log.error('Unknown door operation detected: %s.', event.current_operation);
-        return;
+      // event.current_operation is CLOSING, OPENING, IDLE 
+      // event.state             is OPEN, CLOSED
+      let state = event.current_operation?.toLowerCase();
+      if (state === 'idle') {
+        state = event.state.toLowerCase();
       }
+      this.log.info(`computed state = ${state}, position = ${position}`);
 
-      this.log.info(`event.current_operation: ${event.current_operation}, position: ${position}`);
-
-      switch(event.current_operation) {
+      switch(state) {
 
       case 'closing':
-
         this.status.windowTargetPosition = 0;
         this.status.windowPositionState = this.hap.Characteristic.PositionState.DECREASING;
         this.status.windowCurrentPosition = position;
-
-        // eslint-disable-next-line max-len
-        this.log.error(`closing, PositionState: ${this.status.windowPositionState} CurrentPosition: ${this.status.windowCurrentPosition} TargetPosition: ${this.status.windowTargetPosition}`);
-        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
-
-        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
-
-        this.updateCharacteristics();
-
-
         break;
 
       case 'opening':
-
         this.status.windowTargetPosition = 100;
         this.status.windowPositionState = this.hap.Characteristic.PositionState.INCREASING;
         this.status.windowCurrentPosition = position;
-
-        // eslint-disable-next-line max-len
-        this.log.error(`opening, PositionState: ${this.status.windowPositionState} CurrentPosition: ${this.status.windowCurrentPosition} TargetPosition: ${this.status.windowTargetPosition}`);
-        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
-
-        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState); 
-
-        this.updateCharacteristics();
-
         break;
 
       case 'open':
-
         if (position !== 100) { 
           this.log.error(`position is ${position}, should be 100`); 
         }
         this.status.windowPositionState = this.hap.Characteristic.PositionState.STOPPED;
         this.status.windowCurrentPosition = position;
         this.status.windowTargetPosition = position;
-        // eslint-disable-next-line max-len
-        this.log.error(`open PositionState: ${this.status.windowPositionState}, CurrentPosition: ${this.status.windowCurrentPosition}, TargetPosition: ${this.status.windowTargetPosition}`);
-        
-        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
-
-        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState); 
-
-        this.updateCharacteristics();
-
         break;
 
-      case 'closed': {
+      case 'closed': 
         if (position !== 0) { 
           this.log.error(`position is ${position}, should be 0`); 
         }
         this.status.windowPositionState = this.hap.Characteristic.PositionState.STOPPED;
         this.status.windowCurrentPosition = position;
         this.status.windowTargetPosition = position;
-        // eslint-disable-next-line max-len
-        this.log.error(`closed PositionState: ${this.status.windowPositionState}, CurrentPosition: ${this.status.windowCurrentPosition}, TargetPosition: ${this.status.windowTargetPosition}`); 
-
-        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
-        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
-
-        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
-        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState); 
-
-        this.updateCharacteristics();
-
-
-        let c = windowService.getCharacteristic(this.hap.Characteristic.PositionState);
-        console.log('Perms PositionState:', c.props.perms); // should include 'notify'       
-        c = windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition);
-        console.log('Perms CurrentPosition:', c.props.perms); // should include 'notify'
-        c = windowService.getCharacteristic(this.hap.Characteristic.TargetPosition);
-        console.log('Perms TargetPosition:', c.props.perms); // should include 'notify'
-
-        // If we have a contact sensor, update the switch state.
-        if(this.hints.builtinContactSensor) {
-          console.log('placeholder');
-        }
-
-      }
         break;
 
       default:
         this.log.error('Unknown door operation detected: %s.', event.current_operation);
-        this.status.windowPositionState = this.hap.Characteristic.PositionState.STOPPED;
         this.status.windowCurrentPosition = position;
-
         break;
-      }
 
+      }
+    }
+      this.updateCharacteristics();
       break;
 
     case 'default':
@@ -571,14 +462,16 @@ export class WindowMotorAccessory {
     try {
 
       // Execute the action.
-      const response = await fetch('http://' + this.device.address + '/' + endpoint + '/' + action, { body: JSON.stringify({}), method: 'POST' });
+      // TODO: consider adding timeout; see AbortController
+      const response = await fetch('http://' + this.device.address + '/' + endpoint + '/' + action, { 
+        body: JSON.stringify({}), 
+        method: 'POST' });
 
       if(!response?.ok) {
-
         this.log.error('Unable to execute command: %s - %s.', topic, action);
-
         return false;
       }
+      
     } catch(error) {
 
       let errorMessage = '\n' + util.inspect(error, { colors: true, depth: null, sorted: true });
@@ -590,13 +483,11 @@ export class WindowMotorAccessory {
         case 'ECONNRESET':
 
           errorMessage = 'Connection to the WindowMotor controller has been reset';
-
           break;
 
         case 'EHOSTDOWN':
 
           errorMessage = 'Connection to the WindowMotor controller has been reset';
-
           break;
 
         case 'ETIMEDOUT':

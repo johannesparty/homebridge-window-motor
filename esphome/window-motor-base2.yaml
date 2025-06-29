@@ -17,14 +17,7 @@ esphome:
     - priority: 800
       then:
         - logger.log: "on_boot 800 (before main loop)"
-        - if:
-            condition:
-              binary_sensor.is_on: window_closed
-            then:
-              - logger.log: "setting initial position 0"
-            else:
-              - logger.log: "setting initial position 100"
-        - logger.log: "finished on_boot"
+        - script.execute: check_window_sensor 
 
 esp32:
   board: esp32dev
@@ -75,7 +68,7 @@ switch:
     pin: 
       number: GPIO16
       # mode: INPUT_PULLUP # Use pull-up to avoid floating state
-      inverted: true
+      inverted: false
     id: open_relay
     name: "Open Relay"
     restore_mode: ALWAYS_OFF
@@ -83,7 +76,7 @@ switch:
     pin: 
       number: GPIO17
       # mode: INPUT_PULLUP # Use pull-up to avoid floating state
-      inverted: true
+      inverted: false
     id: close_relay
     name: "Close Relay"
     restore_mode: ALWAYS_OFF
@@ -126,6 +119,23 @@ binary_sensor:
     filters:
      - delayed_on: 100ms
      - delayed_off: 100ms
+    on_state:
+      - logger.log: "Window sensor state changed"
+      - script.execute: check_window_sensor 
+    # on_press:
+    #   - logger.log: "sensor closed"
+    #   - script.execute: 
+    #       condition:
+    #         window_cover.current_operation == esphome::cover::COVER_OPERATION_IDLE
+    #       id: set_position
+    #       value: esphome::cover::COVER_CLOSED
+    # on_release:
+    #   - logger.log: "sensor opened"
+    #   - script.execute: 
+    #       condition:
+    #         window_cover.current_operation == esphome::cover::COVER_OPERATION_IDLE
+    #       id: set_position
+    #       value: esphome::cover::COVER_OPEN
 
 light:
   - platform: binary
@@ -152,13 +162,39 @@ script:
       - lambda: |-
           id(window_cover).current_operation = value;
           id(window_cover).publish_state();
-  - id: set_current_position
+  - id: set_position
     parameters:
       value: int
     then:
       - lambda: |-
           id(window_cover).position = value;
           id(window_cover).publish_state();    
+  - id: check_window_sensor
+    then:
+      - logger.log: "Checking window sensor"
+      - if:
+          condition:
+            lambda: 'return id(window_cover).current_operation ==  COVER_OPERATION_IDLE;'
+          then:
+            - if:
+                condition:
+                  binary_sensor.is_on: window_closed
+                then:
+                  - if:
+                      condition:                   
+                        lambda: 'return id(window_cover).position != esphome::cover::COVER_CLOSED;'
+                      then:
+                        - script.execute:
+                            id: set_position
+                            value: esphome::cover::COVER_CLOSED
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(window_cover).position != esphome::cover::COVER_OPEN;'
+                      then:
+                        - script.execute:
+                            id: set_position
+                            value: esphome::cover::COVER_OPEN
 
 
 cover:
@@ -182,7 +218,7 @@ cover:
       - switch.turn_off: open_relay
       - delay: ${operation_duration}    
       - script.execute:
-          id: set_current_position
+          id: set_position
           value: esphome::cover::COVER_OPEN
       - script.execute:
           id: set_current_operation
@@ -198,9 +234,17 @@ cover:
       - switch.turn_off: close_relay
       - delay: ${operation_duration}
       - script.execute:
-          id: set_current_position
+          id: set_position
           value: esphome::cover::COVER_CLOSED
       - script.execute:
           id: set_current_operation
           value: esphome::cover::COVER_OPERATION_IDLE
 
+# time:
+#   - platform: sntp
+#     id: esptime
+
+interval:
+  - interval: 60s
+    then:
+      - script.execute: check_window_sensor

@@ -1,0 +1,8 @@
+substitutions:
+    device_name: "window-motor-bed1-right"
+    device_entity: 'window-motor-bed1-right'
+    friendly_name: 'Window Motor Bed 1 right'
+    operation_duration: 30s
+    command_duration: 5s
+    
+<<: !include window-motor-base2.yaml

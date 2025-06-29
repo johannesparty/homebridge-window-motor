@@ -10,6 +10,9 @@ dist
 # Ignore generated files.
 homebridge-ui/public/lib
 
+# Ignore esphome .idea stuff
+esphome/.idea
+ 
 # ------------- Defaults ------------- #
 
 # Logs
