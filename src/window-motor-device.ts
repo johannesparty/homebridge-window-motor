@@ -1,5 +1,5 @@
 import { API, CharacteristicValue, HAP, PlatformAccessory } from 'homebridge';
-import { HomebridgePluginLogging, acquireService, validService, validateName } from 'homebridge-plugin-utils';
+import { HomebridgePluginLogging, type Nullable, acquireService, validService, validateName } from 'homebridge-plugin-utils';
 import { WINDOW_MOTOR_OPENCLOSE_DURATION, WINDOW_MOTOR_RELAY_DURATION } from './settings.js';
 import { WindowMotorDevice, WindowMotorReservedNames } from './window-motor-types.js';
 import { WindowMotorOptions } from './window-motor-options.js';
@@ -59,8 +59,8 @@ export class WindowMotorAccessory {
 
     this.accessory = accessory;
     this.api = platform.api;
-    this.config = platform.config;
     this.status = {} as WindowMotorStatus;
+    this.config = platform.config;
     this.hap = this.api.hap;
     this.hints = {} as WindowMotorHints;
     this.device = device;
@@ -143,34 +143,62 @@ export class WindowMotorAccessory {
   //    PositionState   - get
   private configureWindowService(): boolean {
 
+    this.log.info('configuringWindowService for %s', this.name);
+
     // Acquire the service.
-    const service = acquireService(this.hap, this.accessory, this.hap.Service.Window, this.name);
+    // const service = acquireService(this.hap, this.accessory, this.hap.Service.WindowCovering, this.name);
+    let service = this.accessory.getService(this.hap.Service.WindowCovering);
+    if(!service) {
+      this.log.info('WindowCovering service did not exist so creating it.');
+      service = this.accessory.addService(this.hap.Service.WindowCovering, this.name);
+    }
+
 
     if(!service) {
       this.log.error('Unable to add the window service.');
       return false;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.log.info(`< create service with abc: ${(service as any).abc}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).abc = new Date().toISOString(); // for testing perms
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.log.info(`> create service with abc: ${(service as any).abc}`);
+
+    
     // Set the initial current and target door states to closed since windowmotor doesn't tell us initial state on startup.
     service.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
     service.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
     service.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
 
-    service.getCharacteristic(this.hap.Characteristic.TargetPosition).onSet((value: CharacteristicValue) => 
-      this.setWindowTargetPosition(value));
-    service.getCharacteristic(this.hap.Characteristic.TargetPosition).onGet(() => 
-      this.status.windowTargetPosition);
+    // TargetPosition  
+    service.getCharacteristic(this.hap.Characteristic.TargetPosition).onGet(() => {
+      this.log.info('onGet TargetPosition: %s', this.status.windowTargetPosition);
+      return this.status.windowTargetPosition;
+    });
+    service.getCharacteristic(this.hap.Characteristic.TargetPosition).onSet((value: CharacteristicValue) => {
+      this.log.info('onSet,  TargetPosition: %s', value);
+      this.status.windowTargetPosition = value;
+      this.setWindowTargetPosition(value); 
+    } );
 
-    // Handle HomeKit open and close events.
-    service.getCharacteristic(this.hap.Characteristic.PositionState).onGet(() => 
-      this.status.windowPositionState);
+    // PositionState
+    service.getCharacteristic(this.hap.Characteristic.PositionState).onGet(() => {
+      this.log.info(`onGet PositionState: ${this.status.windowPositionState}`);
+      return this.status.windowPositionState; 
+    });
 
-    // Inform HomeKit of our current state.
-    service.getCharacteristic(this.hap.Characteristic.CurrentPosition).onGet(() => 
-      this.status.windowCurrentPosition);
+    // CurrentPosition
+    service.getCharacteristic(this.hap.Characteristic.CurrentPosition).onGet(() => {
+      this.log.info(`onGet CurrentPosition: ${this.status.windowCurrentPosition}`);
+      return this.status.windowCurrentPosition;
+    });
 
     // Let HomeKit know that this is the primary service on this accessory.
     service.setPrimaryService(true);
+
+    this.log.info('configureWindowService returning true for %s', this.name);
 
     return true;
   }
@@ -219,6 +247,7 @@ export class WindowMotorAccessory {
 
     // Understand what we're targeting.
     const target_position = value as number;
+    this.log.info('setWindowTargetPosition: %d', target_position);
 
     // If we have an invalid target state, we're done.
     if(target_position !== 0 && target_position !== 100) {
@@ -232,7 +261,7 @@ export class WindowMotorAccessory {
 
       // Tell HomeKit that we haven't in fact changed our state so we don't end up in an inadvertent opening or closing state.
       setImmediate(() => {
-        this.accessory.getService(this.hap.Service.Window)?.
+        this.accessory.getService(this.hap.Service.WindowCovering)?.
           updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
         return false;
       });
@@ -243,7 +272,7 @@ export class WindowMotorAccessory {
 
     // Set the window state, assuming we're not already there.
 
-    this.log.debug('User-initiated window position change: (' + target_position.toString() + '%)');
+    this.log.info(`User-initiated window position change: ${target_position.toString()}`);
 
     // Execute the command.
     void this.command('window', target_position === 0 ? 'close' : 'open');
@@ -251,14 +280,64 @@ export class WindowMotorAccessory {
     return true;
   }
 
+  private updateCharacteristics(): void {
+    const windowService = this.accessory.getService(this.hap.Service.WindowCovering);
+    if(!windowService) {
+      this.log.error('Unable to get Window Service');
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.log.info(`windowService.abc is ${(windowService as any).abc}`);
+
+    // eslint-disable-next-line max-len
+    this.log.error(`updateCharacteristics:\n\tPositionState:   ${this.status.windowPositionState}\n\tCurrentPosition: ${this.status.windowCurrentPosition}\n\tTargetPosition:  ${this.status.windowTargetPosition}`);
+
+    this.log.error(`< PositionState is   ${windowService.getCharacteristic(this.hap.Characteristic.PositionState).value}`);
+    this.log.error(`< CurrentPosition is ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value}`);
+    this.log.error(`< TargetPosition is  ${windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
+
+    // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
+    // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
+    // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
+
+    windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
+    windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
+    windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
+
+    windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).sendEventNotification(this.status.windowTargetPosition);
+    windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).sendEventNotification(this.status.windowCurrentPosition);
+    windowService.getCharacteristic(this.hap.Characteristic.PositionState).sendEventNotification(this.status.windowPositionState);
+
+    this.log.error(`> PositionState is   ${windowService.getCharacteristic(this.hap.Characteristic.PositionState).value}`);
+    this.log.error(`> CurrentPosition is ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value}`);
+    this.log.error(`> TargetPosition is  ${windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
+    // eslint-disable-next-line max-len
+    this.log.error(`  Target Position == Current Position? ${windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).value === windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).value}`);
+  }
+
+
   // Update the state of the accessory.
   public updateState(event: EspHomeEvent): void {
 
     // const camelCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-    // const windowService = this.accessory.getService(this.hap.Service.Window);
-    // const switchService = this.accessory.getServiceById(this.hap.Service.Switch, WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED);
+    // const windowService = this.accessory.getServiceById(this.hap.Service.WindowCovering, 'window_cover');
+    const windowService = this.accessory.getService(this.hap.Service.WindowCovering);
+    if(!windowService) {
+      this.log.error('Unable to get Window Service');
+      return;
+    }
 
-    this.log.info('got updateState with ' + util.inspect(event, { colors: true, depth: null, sorted: true }));
+    // const switchService = this.accessory.getServiceById(this.hap.Service.Switch, WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED);
+    //const switchService = this.accessory.getServiceById(this.hap.Service.Switch, 'Switch.WindowClosed');
+    //if (!switchService) {
+    //  this.log.error('did not get Switch Service');
+    //  return;
+    //}
+
+    if (event.id !== 'availability') {
+      this.log.info('got updateState with ' + util.inspect(event, { colors: true, depth: null, sorted: true }));
+    }
+    const position = (event.position ?? 0) * 100;
 
     switch(event.id) {
 
@@ -299,32 +378,115 @@ export class WindowMotorAccessory {
         return;
       }
 
+      this.log.info(`event.current_operation: ${event.current_operation}, position: ${position}`);
 
       switch(event.current_operation) {
 
       case 'closing':
 
-        this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.CLOSING;
+        this.status.windowTargetPosition = 0;
+        this.status.windowPositionState = this.hap.Characteristic.PositionState.DECREASING;
+        this.status.windowCurrentPosition = position;
+
+        // eslint-disable-next-line max-len
+        this.log.error(`closing, PositionState: ${this.status.windowPositionState} CurrentPosition: ${this.status.windowCurrentPosition} TargetPosition: ${this.status.windowTargetPosition}`);
+        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
+
+        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
+
+        this.updateCharacteristics();
+
+
         break;
 
       case 'opening':
 
-        this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.OPENING;
+        this.status.windowTargetPosition = 100;
+        this.status.windowPositionState = this.hap.Characteristic.PositionState.INCREASING;
+        this.status.windowCurrentPosition = position;
+
+        // eslint-disable-next-line max-len
+        this.log.error(`opening, PositionState: ${this.status.windowPositionState} CurrentPosition: ${this.status.windowCurrentPosition} TargetPosition: ${this.status.windowTargetPosition}`);
+        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
+
+        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState); 
+
+        this.updateCharacteristics();
+
         break;
 
       case 'open':
 
-        this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.STOPPED;
+        if (position !== 100) { 
+          this.log.error(`position is ${position}, should be 100`); 
+        }
+        this.status.windowPositionState = this.hap.Characteristic.PositionState.STOPPED;
+        this.status.windowCurrentPosition = position;
+        this.status.windowTargetPosition = position;
+        // eslint-disable-next-line max-len
+        this.log.error(`open PositionState: ${this.status.windowPositionState}, CurrentPosition: ${this.status.windowCurrentPosition}, TargetPosition: ${this.status.windowTargetPosition}`);
+        
+        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
+
+        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState); 
+
+        this.updateCharacteristics();
+
         break;
 
-      case 'closed':
+      case 'closed': {
+        if (position !== 0) { 
+          this.log.error(`position is ${position}, should be 0`); 
+        }
+        this.status.windowPositionState = this.hap.Characteristic.PositionState.STOPPED;
+        this.status.windowCurrentPosition = position;
+        this.status.windowTargetPosition = position;
+        // eslint-disable-next-line max-len
+        this.log.error(`closed PositionState: ${this.status.windowPositionState}, CurrentPosition: ${this.status.windowCurrentPosition}, TargetPosition: ${this.status.windowTargetPosition}`); 
 
-        this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.CLOSED;
+        // windowService.getCharacteristic(this.hap.Characteristic.TargetPosition).updateValue(this.status.windowTargetPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition).updateValue(this.status.windowCurrentPosition);
+        // windowService.getCharacteristic(this.hap.Characteristic.PositionState).updateValue(this.status.windowPositionState);
+
+        // windowService.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
+        // windowService.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState); 
+
+        this.updateCharacteristics();
+
+
+        let c = windowService.getCharacteristic(this.hap.Characteristic.PositionState);
+        console.log('Perms PositionState:', c.props.perms); // should include 'notify'       
+        c = windowService.getCharacteristic(this.hap.Characteristic.CurrentPosition);
+        console.log('Perms CurrentPosition:', c.props.perms); // should include 'notify'
+        c = windowService.getCharacteristic(this.hap.Characteristic.TargetPosition);
+        console.log('Perms TargetPosition:', c.props.perms); // should include 'notify'
+
+        // If we have a contact sensor, update the switch state.
+        if(this.hints.builtinContactSensor) {
+          console.log('placeholder');
+        }
+
+      }
         break;
 
       default:
         this.log.error('Unknown door operation detected: %s.', event.current_operation);
-        this.status.windowPositionState = this.hap.Characteristic.CurrentDoorState.CLOSED;
+        this.status.windowPositionState = this.hap.Characteristic.PositionState.STOPPED;
+        this.status.windowCurrentPosition = position;
+
         break;
       }
 
@@ -350,6 +512,8 @@ export class WindowMotorAccessory {
   private async command(topic: string, payload = ''): Promise<boolean> {
     let endpoint;
     let action;
+
+    this.log.info(`command(topic ${topic}, payload ${payload})`);
 
     switch(topic) {
 
@@ -461,62 +625,7 @@ export class WindowMotorAccessory {
     return true;
   }
 
-  // Utility function to translate HomeKit's current door state values into human-readable form.
-  private translateCurrentDoorState(value: CharacteristicValue): string {
-
-    // HomeKit state decoder ring.
-    switch(value) {
-
-    case this.hap.Characteristic.CurrentDoorState.CLOSED:
-
-      return 'closed';
-
-    case this.hap.Characteristic.CurrentDoorState.CLOSING:
-
-      return 'closing';
-
-    case this.hap.Characteristic.CurrentDoorState.OPEN:
-
-      return 'open';
-
-    case this.hap.Characteristic.CurrentDoorState.OPENING:
-
-      return 'opening';
-
-    case this.hap.Characteristic.CurrentDoorState.STOPPED:
-
-      return 'stopped';
-
-    default:
-
-      break;
-    }
-
-    return 'unknown';
-  }
-
-  // Utility function to translate HomeKit's target door state values into human-readable form.
-  private translateTargetDoorState(value: CharacteristicValue): string {
-
-    // HomeKit state decoder ring.
-    switch(value) {
-
-    case this.hap.Characteristic.TargetDoorState.CLOSED:
-
-      return 'closed';
-
-    case this.hap.Characteristic.TargetDoorState.OPEN:
-
-      return 'open';
-
-    default:
-
-      break;
-    }
-
-    return 'unknown';
-  }
-
+  
 
   // Utility for checking feature options on a device.
   private hasFeature(option: string): boolean {

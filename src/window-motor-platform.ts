@@ -1,14 +1,14 @@
 import type { API /* ,Characteristic */, DynamicPlatformPlugin, Logging, PlatformAccessory, 
   HAP, PlatformConfig /* ,Service as HomeBridgeService */ } from 'homebridge';
-import { Bonjour, Service as BonjourService } from 'bonjour-service';
-import { FeatureOptions, Nullable, validateName } from 'homebridge-plugin-utils';
+import { Bonjour, type Service as BonjourService } from 'bonjour-service';
+import { FeatureOptions, type Nullable, validateName } from 'homebridge-plugin-utils';
 
 import { 
   PLATFORM_NAME, PLUGIN_NAME, 
   WINDOW_MOTOR_AUTODISCOVERY_INTERVAL, WINDOW_MOTOR_AUTODISCOVERY_TYPE, WINDOW_MOTOR_AUTODISCOVERY_PROJECT_NAMES, 
   WINDOW_MOTOR_EVENT_API_HEARTBEAT_DURATION, WINDOW_MOTOR_HEARTBEAT_DURATION, WINDOW_MOTOR_HEARTBEAT_INTERVAL } from './settings.js';
 
-import { WindowMotorOptions, featureOptionCategories, featureOptions } from './window-motor-options.js';
+import { type WindowMotorOptions, featureOptionCategories, featureOptions } from './window-motor-options.js';
 import { EventSource } from 'eventsource';
 import { WindowMotorAccessory } from './window-motor-device.js';
 
