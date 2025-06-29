@@ -97,16 +97,18 @@ number:
     min_value: 1
     max_value: 300
     step: 1
-    initial_value: 10
+    initial_value: 30
     optimistic: true
+    restore_value: true
   - platform: template
     id: operation_duration
     name: "Relay Duration"
     min_value: 1
-    max_value: 30
+    max_value: 60
     step: 1
-    initial_value: 3
+    initial_value: 5
     optimistic: true
+    restore_value: true
 
 binary_sensor:
   - platform: gpio

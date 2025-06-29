@@ -329,6 +329,26 @@ export class WindowMotorAccessory {
 
       break;
 
+    case 'number-relay_duration': {
+        
+      const value = parseInt(event.value ?? '0', 10);
+      if (value !== this.hints.relayDuration) {
+        this.command('relay_duration', this.hints.relayDuration.toString());
+        this.log.info(`relay_duration changed from ${value} to ${this.hints.relayDuration}`);
+      }
+      break;
+    }
+
+    case 'number-open_duration': {
+
+      const value = parseInt(event.value ?? '0', 10);
+      if (value !== this.hints.openCloseDuration) {
+        this.command('open_duration', this.hints.openCloseDuration.toString());
+        this.log.info(`open_duration changed from ${value} to ${this.hints.openCloseDuration}`);
+      }
+      break;
+    }
+
     case 'cover-window_cover': {
 
       const position = (event.position ?? 0) * 100;
@@ -453,6 +473,18 @@ export class WindowMotorAccessory {
       }
       break;  
 
+    case 'relay_duration':
+
+      endpoint = 'number/relay_duration';
+      action = 'set?value=' + payload;
+      break;
+
+    case 'open_duration':
+
+      endpoint = 'number/open_duration';  
+      action = 'set?value=' + payload;
+      break;
+
     default:
 
       this.log.error('Unknown command received: %s - %s.', topic, payload);
@@ -471,7 +503,7 @@ export class WindowMotorAccessory {
         this.log.error('Unable to execute command: %s - %s.', topic, action);
         return false;
       }
-      
+
     } catch(error) {
 
       let errorMessage = '\n' + util.inspect(error, { colors: true, depth: null, sorted: true });
