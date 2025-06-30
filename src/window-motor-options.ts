@@ -32,7 +32,7 @@ export const featureOptions: { [index: string]: FeatureOptionEntry[] } = {
   'Window': [
     { default: false, description: 'Make this window read-only by ignoring open and close requests from HomeKit.', name: 'ReadOnly' },
     { default: true,  description: 'Motor includes connected window closed sensor.', name: 'Builtin.Closed.Sensor' },
-    { default: false, description: 'Add a contact sensor accessory for window closed.', name: 'Homekit.Switch.WindowClosed' },
+    { default: false, description: 'Add a virtual switch to indicate window closed.', name: 'Homekit.Switch.WindowClosed' },
     { default: true, defaultValue: WINDOW_MOTOR_OPENCLOSE_DURATION, description: 'Time to open or close window', name: 'OpenCloseDuration' },
     { default: true, defaultValue: WINDOW_MOTOR_RELAY_DURATION, description: 'Time to operate relay for open and close', name: 'RelayDuration' },
   ],

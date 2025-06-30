@@ -359,11 +359,31 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     this.log.info('Configuring: %s (address: %s mac: %s ESPHome firmware: v%s).', 
       device.name, device.address, device.mac, device.firmwareVersion);
 
+    // optionally create switchAccessory
+    // manage with both accessories with single WindowMotorAccessory
+    const useVirtualSwitch = this.featureOptions.test('Window.Homekit.Switch.WindowClosed', device.mac);
+    let switchAccessory: PlatformAccessory | undefined = undefined;
+    if (useVirtualSwitch) {
+      // If the user has requested a virtual switch, we add it to the accessory. 
+      const switchUUID  = this.hap.uuid.generate(mac+'-virtual-switch');
+      switchAccessory = this.accessories.find(x => x.UUID === switchUUID);
+      if (!switchAccessory) {
+        // Create a new accessory for the virtual switch.
+        switchAccessory = new this.api.platformAccessory(validateName(device.name + ' Window Closed'), switchUUID);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [switchAccessory]);
+        this.accessories.push(switchAccessory);
+      }
+    }
+
+
     // Add it to our list of configured devices.
-    this.configuredDevices[uuid] = new WindowMotorAccessory(this, accessory, device);
+    this.configuredDevices[uuid] = new WindowMotorAccessory(this, accessory, switchAccessory, device);
 
     // Refresh the accessory cache.
     this.api.updatePlatformAccessories([accessory]);
+    if (switchAccessory) {
+      this.api.updatePlatformAccessories([switchAccessory]);
+    }
 
     return this.configuredDevices[uuid];
   }

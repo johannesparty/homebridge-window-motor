@@ -44,6 +44,7 @@ interface WindowMotorStatus {
 
 export class WindowMotorAccessory {
   private readonly accessory: PlatformAccessory;
+  private readonly switchAccessory?: PlatformAccessory;
   private readonly api: API;
   private readonly config: WindowMotorOptions;
   public readonly device: WindowMotorDevice;
@@ -55,9 +56,10 @@ export class WindowMotorAccessory {
   private readonly status: WindowMotorStatus;
 
   // The constructor initializes key variables and calls configureDevice().
-  constructor(platform: WindowMotorPlatform, accessory: PlatformAccessory, device: WindowMotorDevice) {
+  constructor(platform: WindowMotorPlatform, accessory: PlatformAccessory, switchAccessory: PlatformAccessory | undefined, device: WindowMotorDevice) {
 
     this.accessory = accessory;
+    this.switchAccessory = switchAccessory;
     this.api = platform.api;
     this.status = {} as WindowMotorStatus;
     this.config = platform.config;
@@ -93,6 +95,9 @@ export class WindowMotorAccessory {
     this.configureServiceAccessoryInformation();
     this.configureWindowService();
     this.configureSwitchService();
+
+    // Set the accessory name.
+    this.accessoryName = this.device.name;
   }
 
   // Configure device-specific settings.
@@ -146,7 +151,7 @@ export class WindowMotorAccessory {
     this.log.info('configuringWindowService for %s', this.name);
 
     // Acquire the service.
-    const service = acquireService(this.hap, this.accessory, this.hap.Service.WindowCovering, this.name);
+    const service = acquireService(this.hap, this.accessory, this.hap.Service.Window, this.name);
     if(!service) {
       this.log.error('Unable to add the window service.');
       return false;
@@ -196,16 +201,22 @@ export class WindowMotorAccessory {
   //    on  - get, set (bool)
   private configureSwitchService(): boolean {
 
-    // Validate whether we should have this service enabled.
-    if(!validService(this.accessory, this.hap.Service.Switch, () => {
-      // We only enable this on WindowMotor devices when the user has enabled this capability.
-      return this.hints.homekitWindowClosedSwitch;
-    }, WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED)) {
+    if (!this.switchAccessory) {
       return false;
     }
 
+    // configure AccessoryInformation service
+    this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.
+      updateCharacteristic(this.hap.Characteristic.Manufacturer, 'github.com/schmidtparty');
+    this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.
+      updateCharacteristic(this.hap.Characteristic.Model, 'WindowMotor');
+    this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.updateCharacteristic(this.hap.Characteristic.SerialNumber, this.device.mac);
+    this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.updateCharacteristic(this.hap.Characteristic.FirmwareRevision,
+      this.device.firmwareVersion);
+
+
     // Acquire the service.
-    const service = acquireService(this.hap, this.accessory, this.hap.Service.Switch, 
+    const service = acquireService(this.hap, this.switchAccessory, this.hap.Service.Switch, 
       this.name + ' Closed', WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED);
 
     if(!service) {
@@ -225,8 +236,6 @@ export class WindowMotorAccessory {
 
     return true;
   }
-
-  
   
   // Open or close the garage door.
   private setWindowTargetPosition(value: CharacteristicValue): boolean {
@@ -247,7 +256,7 @@ export class WindowMotorAccessory {
 
       // Tell HomeKit that we haven't in fact changed our state so we don't end up in an inadvertent opening or closing state.
       setImmediate(() => {
-        this.accessory.getService(this.hap.Service.WindowCovering)?.
+        this.accessory.getService(this.hap.Service.Window)?.
           updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
         return false;
       });
@@ -267,7 +276,7 @@ export class WindowMotorAccessory {
   }
 
   private updateCharacteristics(): void {
-    const windowService = this.accessory.getService(this.hap.Service.WindowCovering);
+    const windowService = this.accessory.getService(this.hap.Service.Window);
     if(!windowService) {
       this.log.error('Unable to get Window Service');
       return;
@@ -297,8 +306,8 @@ export class WindowMotorAccessory {
   public updateState(event: EspHomeEvent): void {
 
     // const camelCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-    // const windowService = this.accessory.getServiceById(this.hap.Service.WindowCovering, 'window_cover');
-    const windowService = this.accessory.getService(this.hap.Service.WindowCovering);
+    // const windowService = this.accessory.getServiceById(this.hap.Service.Window, 'window_cover');
+    const windowService = this.accessory.getService(this.hap.Service.Window);
     if(!windowService) {
       this.log.error('Unable to get Window Service');
       return;
