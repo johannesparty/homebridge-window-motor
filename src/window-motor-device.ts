@@ -209,7 +209,7 @@ export class WindowMotorAccessory {
     this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.
       updateCharacteristic(this.hap.Characteristic.Manufacturer, 'github.com/schmidtparty');
     this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.
-      updateCharacteristic(this.hap.Characteristic.Model, 'WindowMotor');
+      updateCharacteristic(this.hap.Characteristic.Model, 'WindowMotorSwitch');
     this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.updateCharacteristic(this.hap.Characteristic.SerialNumber, this.device.mac);
     this.switchAccessory.getService(this.hap.Service.AccessoryInformation)?.updateCharacteristic(this.hap.Characteristic.FirmwareRevision,
       this.device.firmwareVersion);
@@ -228,7 +228,10 @@ export class WindowMotorAccessory {
     service.getCharacteristic(this.hap.Characteristic.On)?.onGet(() => this.status.switchOn);
 
     // Open or close the switch.
-    service.getCharacteristic(this.hap.Characteristic.On)?.onSet((value: CharacteristicValue) => this.status.switchOn = value);
+    service.getCharacteristic(this.hap.Characteristic.On)?.onSet((value: CharacteristicValue) => {
+      this.log.info('virtual switch set to %s', value);
+      this.status.switchOn = value; 
+    });
 
     // Initialize the switch.
     service.updateCharacteristic(this.hap.Characteristic.On, this.status.switchOn);
