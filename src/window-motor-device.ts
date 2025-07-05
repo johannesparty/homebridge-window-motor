@@ -230,6 +230,7 @@ export class WindowMotorAccessory {
     // Open or close the switch.
     service.getCharacteristic(this.hap.Characteristic.On)?.onSet((value: CharacteristicValue) => {
       this.log.info('virtual switch set to %s', value);
+      this.command('virtual_window_sensor', value ? 'on' : 'off');
       this.status.switchOn = value; 
     });
 
@@ -346,7 +347,7 @@ export class WindowMotorAccessory {
       const value = parseInt(event.value ?? '0', 10);
       if (value !== this.hints.relayDuration) {
         this.command('relay_duration', this.hints.relayDuration.toString());
-        this.log.info(`relay_duration changed from ${value} to ${this.hints.relayDuration}`);
+        this.log.info(`relay_duration changed back from ${value} to ${this.hints.relayDuration}`);
       }
       break;
     }
@@ -356,7 +357,17 @@ export class WindowMotorAccessory {
       const value = parseInt(event.value ?? '0', 10);
       if (value !== this.hints.openCloseDuration) {
         this.command('open_duration', this.hints.openCloseDuration.toString());
-        this.log.info(`open_duration changed from ${value} to ${this.hints.openCloseDuration}`);
+        this.log.info(`open_duration changed back from ${value} to ${this.hints.openCloseDuration}`);
+      }
+      break;
+    }
+
+    case 'switch-virtual_window_sensor': {
+
+      const value = parseInt(event.value ?? '0', 10);
+      if (value !== this.status.switchOn) {
+        this.command('virtual_window_sensor', this.status.switchOn ? 'on' : 'off');
+        this.log.info(`virtual_window_sensor changed back to ${this.status.switchOn}`);
       }
       break;
     }
@@ -429,8 +440,8 @@ export class WindowMotorAccessory {
   // window,open
   // window,close
   // 
-  // virtual_sensor,on
-  // virtual_sensor,off
+  // virtual_window_sensor,on
+  // virtual_window_sensor,off
   // 
   private async command(topic: string, payload = ''): Promise<boolean> {
     let endpoint;
@@ -465,22 +476,24 @@ export class WindowMotorAccessory {
       }
       break;
 
-    case 'virtual_sensor':
+    case 'virtual_window_sensor':
 
       endpoint = 'switch/virtual_window_sensor';
 
       switch(payload) {
 
       case 'on':
+        this.status.switchOn = true;
         action = 'turn_on';
         break;
 
       case 'off':
+        this.status.switchOn = false;
         action = 'turn_off';
         break;
 
       default:
-        this.log.error('Unknown virtual_sensor command received: %s.', payload);
+        this.log.error('Unknown virtual_window_sensor command received: %s.', payload);
         return false;
       }
       break;  

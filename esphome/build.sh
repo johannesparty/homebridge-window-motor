@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e  # Exit on unhandled errors
 
+if [ -z "$VIRTUAL_ENV_PROMPT" ] && [ -f ~/esphome-env/bin/activate ]; then
+  source ~/esphome-env/bin/activate
+fi
+
 CONFIGS=(
   "window-motor-test-1"
   "window-motor-bed1-left"

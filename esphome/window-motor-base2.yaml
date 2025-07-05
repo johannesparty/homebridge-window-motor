@@ -84,9 +84,30 @@ switch:
     name: "Virtual Window Sensor"
     id: "virtual_window_sensor"
     optimistic: true
+    turn_on_action:
+      - logger.log: "virtual window switch turn_on"
+      - switch.template.publish:
+          id: virtual_window_sensor
+          state: ON      
+      # - script.execute: check_window_sensor 
+    turn_off_action:
+      - logger.log: "Window sensor switch turn_off"
+      - switch.template.publish:
+          id: virtual_window_sensor
+          state: OFF
+      # - script.execute: check_window_sensor
+    on_turn_on_action:
+      - script.execute: check_window_sensor
+    on_turn_off_action:
+      - script.execute: check_window_sensor
   - platform: template
     name: "Have Sensor"
     id: "have_sensor"
+    optimistic: true
+    restore_mode: ALWAYS_ON
+  - platform: template
+    name: "Have Virtual Sensor"
+    id: "have_virtual_sensor"
     optimistic: true
     restore_mode: ALWAYS_ON
 
@@ -176,11 +197,27 @@ script:
       - logger.log: "Checking window sensor"
       - if:
           condition:
+            switch.is_on: virtual_window_sensor
+          then:
+            - logger.log: "Virtual window sensor is on"
+          else:
+            - logger.log: "Virtual window sensor is off"
+      - if:
+          condition:
+            binary_sensor.is_on: window_closed
+          then:
+            - logger.log: "gpio window sensor is on"
+          else:
+            - logger.log: "gpio window sensor is off"
+      - if:
+          condition:
             lambda: 'return id(window_cover).current_operation ==  COVER_OPERATION_IDLE;'
           then:
             - if:
                 condition:
-                  binary_sensor.is_on: window_closed
+                  or:
+                    - binary_sensor.is_on: window_closed
+                    - switch.is_on: virtual_window_sensor
                 then:
                   - if:
                       condition:                   
