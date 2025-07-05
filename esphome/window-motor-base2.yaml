@@ -108,10 +108,10 @@ switch:
           id: virtual_window_sensor
           state: OFF
       # - script.execute: check_window_sensor
-    on_turn_on:
-      - script.execute: check_window_sensor
-    on_turn_off:
-      - script.execute: check_window_sensor
+#    on_turn_on:
+#      - script.execute: check_window_sensor
+#    on_turn_off:
+#      - script.execute: check_window_sensor
   # - platform: template
   #   name: "Have Sensor"
   #   id: "have_sensor"
@@ -156,7 +156,29 @@ binary_sensor:
      - delayed_off: 100ms
     on_state:
       - logger.log: "Window sensor state changed"
-      - script.execute: check_window_sensor 
+#      - script.execute: check_window_sensor 
+  - platform: template
+    name: "Combined Window Sensor"
+    id: combined_window_sensor
+    lambda: |-
+        if (id(sensor_type).state == "gpio") {
+          return id(window_closed).state;
+        } else if (id(sensor_type).state == "virtual") {
+          return id(virtual_window_sensor).state;
+        } else {
+          return false; // or true, depending on your logic
+        }
+    on_state:
+      - logger.log: "Combined window sensor state changed"
+      - if:
+          condition:
+            binary_sensor.is_on: combined_window_sensor
+          then:
+            - logger.log: "Combined window sensor is on"
+          else:
+            - logger.log: "Combined window sensor is off"      
+      - script.execute: check_window_sensor
+
     # on_press:
     #   - logger.log: "sensor closed"
     #   - script.execute: 
@@ -223,13 +245,14 @@ script:
             - logger.log: "gpio window sensor is off"
       - if:
           condition:
-            lambda: 'return id(window_cover).current_operation ==  COVER_OPERATION_IDLE;'
+            lambda: |-
+              return
+                id(sensor_type).state != "none" && 
+                id(window_cover).current_operation ==  COVER_OPERATION_IDLE;
           then:
             - if:
                 condition:
-                  or:
-                    - binary_sensor.is_on: window_closed
-                    - switch.is_on: virtual_window_sensor
+                  - binary_sensor.is_on: combined_window_sensor
                 then:
                   - if:
                       condition:                   
