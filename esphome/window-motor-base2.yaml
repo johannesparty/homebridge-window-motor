@@ -52,6 +52,18 @@ web_server:
 
 captive_portal:
 
+select:
+  - platform: template
+    name: "Sensor Type"
+    id: sensor_type
+    optimistic: true
+    restore_value: true
+    options:
+      - "virtual"
+      - "gpio"
+      - "none"
+    initial_option: "none"
+
 # Globals for state
 #globals:
 #  - id: current_position
@@ -96,20 +108,20 @@ switch:
           id: virtual_window_sensor
           state: OFF
       # - script.execute: check_window_sensor
-    on_turn_on_action:
+    on_turn_on:
       - script.execute: check_window_sensor
-    on_turn_off_action:
+    on_turn_off:
       - script.execute: check_window_sensor
-  - platform: template
-    name: "Have Sensor"
-    id: "have_sensor"
-    optimistic: true
-    restore_mode: ALWAYS_ON
-  - platform: template
-    name: "Have Virtual Sensor"
-    id: "have_virtual_sensor"
-    optimistic: true
-    restore_mode: ALWAYS_ON
+  # - platform: template
+  #   name: "Have Sensor"
+  #   id: "have_sensor"
+  #   optimistic: true
+  #   restore_mode: ALWAYS_ON
+  # - platform: template
+  #   name: "Have Virtual Sensor"
+  #   id: "have_virtual_sensor"
+  #   optimistic: true
+  #   restore_mode: ALWAYS_ON
 
 number:
   - platform: template
