@@ -63,17 +63,6 @@ select:
       - "gpio"
       - "none"
     initial_option: "none"
-
-# Globals for state
-#globals:
-#  - id: current_position
-#    type: float
-#    restore_value: no
-#    initial_value: '0.0'
-#  - id: current_op
-#    type: esphome::cover::CoverOperation
-#    restore_value: no
-#    initial_value: 'esphome::cover::COVER_OPERATION_IDLE'
   
 switch:
   - platform: gpio
@@ -84,6 +73,7 @@ switch:
     id: open_relay
     name: "Open Relay"
     restore_mode: ALWAYS_OFF
+
   - platform: gpio
     pin: 
       number: GPIO17
@@ -93,6 +83,7 @@ switch:
     name: "Close Relay"
     restore_mode: ALWAYS_OFF
   - platform: template
+
     name: "Virtual Window Sensor"
     id: "virtual_window_sensor"
     optimistic: true
@@ -101,27 +92,12 @@ switch:
       - switch.template.publish:
           id: virtual_window_sensor
           state: ON      
-      # - script.execute: check_window_sensor 
+
     turn_off_action:
       - logger.log: "Window sensor switch turn_off"
       - switch.template.publish:
           id: virtual_window_sensor
           state: OFF
-      # - script.execute: check_window_sensor
-#    on_turn_on:
-#      - script.execute: check_window_sensor
-#    on_turn_off:
-#      - script.execute: check_window_sensor
-  # - platform: template
-  #   name: "Have Sensor"
-  #   id: "have_sensor"
-  #   optimistic: true
-  #   restore_mode: ALWAYS_ON
-  # - platform: template
-  #   name: "Have Virtual Sensor"
-  #   id: "have_virtual_sensor"
-  #   optimistic: true
-  #   restore_mode: ALWAYS_ON
 
 number:
   - platform: template
@@ -133,6 +109,7 @@ number:
     initial_value: 30
     optimistic: true
     restore_value: true
+
   - platform: template
     id: operation_duration
     name: "Relay Duration"
@@ -156,7 +133,7 @@ binary_sensor:
      - delayed_off: 100ms
     on_state:
       - logger.log: "Window sensor state changed"
-#      - script.execute: check_window_sensor 
+
   - platform: template
     name: "Combined Window Sensor"
     id: combined_window_sensor
@@ -169,30 +146,7 @@ binary_sensor:
           return false; // or true, depending on your logic
         }
     on_state:
-      - logger.log: "Combined window sensor state changed"
-      - if:
-          condition:
-            binary_sensor.is_on: combined_window_sensor
-          then:
-            - logger.log: "Combined window sensor is on"
-          else:
-            - logger.log: "Combined window sensor is off"      
       - script.execute: check_window_sensor
-
-    # on_press:
-    #   - logger.log: "sensor closed"
-    #   - script.execute: 
-    #       condition:
-    #         window_cover.current_operation == esphome::cover::COVER_OPERATION_IDLE
-    #       id: set_position
-    #       value: esphome::cover::COVER_CLOSED
-    # on_release:
-    #   - logger.log: "sensor opened"
-    #   - script.execute: 
-    #       condition:
-    #         window_cover.current_operation == esphome::cover::COVER_OPERATION_IDLE
-    #       id: set_position
-    #       value: esphome::cover::COVER_OPEN
 
 light:
   - platform: binary
@@ -206,11 +160,6 @@ output:
     pin: GPIO23
     id: led_output
 
-# todo: don't want to publish so often
-# also, might want to re-factor so setting position sets operation to IDLE
-# would still need to set OPENING and CLOSING
-# but maybe script does it.
-# easier to know after adding sensor functions
 script:
   - id: set_current_operation
     parameters:
@@ -219,6 +168,7 @@ script:
       - lambda: |-
           id(window_cover).current_operation = value;
           id(window_cover).publish_state();
+
   - id: set_position
     parameters:
       value: int
@@ -226,23 +176,10 @@ script:
       - lambda: |-
           id(window_cover).position = value;
           id(window_cover).publish_state();    
+
   - id: check_window_sensor
     then:
       - logger.log: "Checking window sensor"
-      - if:
-          condition:
-            switch.is_on: virtual_window_sensor
-          then:
-            - logger.log: "Virtual window sensor is on"
-          else:
-            - logger.log: "Virtual window sensor is off"
-      - if:
-          condition:
-            binary_sensor.is_on: window_closed
-          then:
-            - logger.log: "gpio window sensor is on"
-          else:
-            - logger.log: "gpio window sensor is off"
       - if:
           condition:
             lambda: |-
@@ -269,7 +206,6 @@ script:
                         - script.execute:
                             id: set_position
                             value: esphome::cover::COVER_OPEN
-
 
 cover:
   - platform: template

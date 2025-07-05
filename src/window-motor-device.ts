@@ -23,8 +23,7 @@ interface WindowMotorHints {
   logWindowMotor: boolean,
   openCloseDuration: number,
   relayDuration: number,
-  builtinContactSensor: boolean,
-  homekitWindowClosedSwitch: boolean,
+  sensorType: 'none' | 'gpio' | 'virtual';
   readOnly: boolean, // not sure how useful this is
 }
 
@@ -110,8 +109,17 @@ export class WindowMotorAccessory {
 
     // Window features
     this.hints.readOnly = this.hasFeature('Window.ReadOnly');
-    this.hints.homekitWindowClosedSwitch = this.hasFeature('Window.Homekit.Switch.WindowClosed');
-    this.hints.builtinContactSensor = this.hasFeature('Window.Builtin.Closed.Sensor');
+
+    this.hints.sensorType = 'none';
+    if (this.hasFeature('Window.Builtin.Closed.Sensor')) {
+      this.hints.sensorType = 'gpio';
+      if (this.hasFeature('Window.Homekit.Switch.WindowClosed')) {
+        this.log.warn('builtin contact sensor overwriting virtual window sensor');
+      }
+    } else if (this.hasFeature('Window.Homekit.Switch.WindowClosed')) {
+      this.hints.sensorType = 'virtual';
+    }
+
     this.hints.openCloseDuration = this.platform.featureOptions.getInteger('Window.OpenCloseDuration', this.device.mac) ?? WINDOW_MOTOR_OPENCLOSE_DURATION;
     this.hints.relayDuration = this.platform.featureOptions.getInteger('Window.RelayDuration', this.device.mac) ?? WINDOW_MOTOR_RELAY_DURATION;
     if(this.hints.readOnly) {
@@ -372,6 +380,16 @@ export class WindowMotorAccessory {
       break;
     }
 
+    case 'select-sensor_type': {
+
+      this.log.info(`select-sensor_type: ${event.value}, sensorType: ${this.hints.sensorType}`);
+      if (event.value !== this.hints.sensorType) {
+        this.command('sensor_type', this.hints.sensorType);
+        this.log.info(`sensor_type changed back to ${this.hints.sensorType}`);
+      }
+      break;
+    }
+
     case 'cover-window_cover': {
 
       const position = (event.position ?? 0) * 100;
@@ -498,6 +516,12 @@ export class WindowMotorAccessory {
       }
       break;  
 
+    case 'sensor_type': // none, gpio, virtual
+
+      endpoint = 'select/sensor_type';
+      action = 'set?option=' + payload;
+      break;
+
     case 'relay_duration':
 
       endpoint = 'number/relay_duration';
@@ -520,7 +544,9 @@ export class WindowMotorAccessory {
 
       // Execute the action.
       // TODO: consider adding timeout; see AbortController
-      const response = await fetch('http://' + this.device.address + '/' + endpoint + '/' + action, { 
+      const url = 'http://' + this.device.address + '/' + endpoint + '/' + action;
+      this.log.info('Sending command: '+url);
+      const response = await fetch(url, { 
         body: JSON.stringify({}), 
         method: 'POST' });
 
