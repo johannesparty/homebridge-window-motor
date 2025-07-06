@@ -106,7 +106,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
   // This gets called when homebridge restores cached accessories at startup. 
   // We intentionally avoid doing anything significant here, and save all that logic for device discovery.
   public configureAccessory(accessory: PlatformAccessory): void {
-    // Add this to the accessory array so we can track it.
+    this.log.info(`configureAccessory: Cached: ${accessory.displayName} (${accessory.UUID})`);    
     this.accessories.push(accessory);
   }
 
@@ -147,7 +147,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       return;
     }
 
-    console.log('Discovered service: ', util.inspect(service, { colors: true, depth: null, sorted: true }));
+    console.log('discoverWindowMotorDevice: ', util.inspect(service, { colors: true, depth: null, sorted: true }));
 
     // We grab the first address provided for the ESPHome device.
     const address = service.addresses[0];
@@ -294,6 +294,9 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
 
   private configureWindowMotor(address: string, mac: string, deviceInfo: Record<string, string>): Nullable<WindowMotorAccessory> {
 
+    // eslint-disable-next-line max-len
+    this.log.info(`configureWindowMotor: address: ${address}, mac: ${mac}, deviceInfo: ${util.inspect(deviceInfo, { colors: true, depth: null, sorted: true })}`);
+
     // If we've already discovered this device, we're done.
     if(this.discoveredDevices[mac]) {
       return null;
@@ -334,8 +337,19 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
         // Unregister the accessory and delete its remnants from HomeKit.
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [ accessory ]);
         this.accessories.splice(this.accessories.indexOf(accessory), 1);
-        this.api.updatePlatformAccessories(this.accessories);
       }
+
+      // remove switchAccessory (if exists
+      const switchUUID  = this.hap.uuid.generate(mac+'-virtual-switch');
+      const switchAccessory = this.accessories.find(x => x.UUID === switchUUID);
+      if (switchAccessory) {
+        // Create a new accessory for the virtual switch.
+        this.log.info('%s: Removing virtual switch from HomeKit (C).', switchAccessory.displayName);
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [ switchAccessory ]);
+        this.accessories.splice(this.accessories.indexOf(switchAccessory), 1);
+      }
+
+      this.api.updatePlatformAccessories(this.accessories);
 
       // We're done.
       return null;
@@ -369,9 +383,21 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       switchAccessory = this.accessories.find(x => x.UUID === switchUUID);
       if (!switchAccessory) {
         // Create a new accessory for the virtual switch.
+        this.log.info('%s: Adding virtual switch to HomeKit.', device.name + ' Window Closed');
         switchAccessory = new this.api.platformAccessory(validateName(device.name + ' Window Closed'), switchUUID);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [switchAccessory]);
         this.accessories.push(switchAccessory);
+      }
+    } else {
+      // remove switchAccessory (if exists
+      const switchUUID  = this.hap.uuid.generate(mac+'-virtual-switch');
+      const switchAccessory = this.accessories.find(x => x.UUID === switchUUID);
+      if (switchAccessory) {
+        // Create a new accessory for the virtual switch.
+        this.log.info('%s: Removing virtual switch from HomeKit (B).', switchAccessory.displayName);
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [ switchAccessory ]);
+        this.accessories.splice(this.accessories.indexOf(switchAccessory), 1);
+        this.api.updatePlatformAccessories(this.accessories);
       }
     }
 
