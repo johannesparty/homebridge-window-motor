@@ -9,6 +9,8 @@ CONFIGS=(
   "window-motor-test-1"
   "window-motor-bed1-left"
   "window-motor-bed1-right"
+  "window-motor-lr-right"
+  "window-motor-lr-left"
 )
 
 # Determine which configs to process

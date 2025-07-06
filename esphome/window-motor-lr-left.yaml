@@ -1,0 +1,8 @@
+substitutions:
+    device_name: "window-motor-lr-left"
+    device_entity: 'window-motor-lr-left'
+    friendly_name: 'Window Motor LR Left'
+    operation_duration: 30s
+    command_duration: 5s
+    
+<<: !include window-motor-base2.yaml
