@@ -6,7 +6,7 @@ esphome:
   comment: 'Template Window Motor Control'        
   project:
     name: "window-motor.esphome"
-    version: "2025.6.21"
+    version: "2025.7.27"
   name_add_mac_suffix: false
   on_boot:
     - priority: -100  
@@ -168,16 +168,22 @@ script:
       value: esphome::cover::CoverOperation
     then:
       - lambda: |-
+          auto start = millis();
           id(window_cover).current_operation = value;
           id(window_cover).publish_state();
+          auto end = millis();
+          ESP_LOGD("main", "set_current_operation took %d ms", end - start);          
 
   - id: set_position
     parameters:
       value: int
     then:
       - lambda: |-
+          auto start = millis();
           id(window_cover).position = value;
           id(window_cover).publish_state();    
+                    auto end = millis();
+          ESP_LOGD("main", "set_position took %d ms", end - start);     
 
   - id: check_window_sensor
     then:
@@ -211,21 +217,12 @@ script:
                             id: set_position
                             value: esphome::cover::COVER_OPEN
           else:
-            - logger.log: "skipping window sensor check"                      
+            - logger.log: "skipping window sensor check"         
 
-cover:
-  - platform: template
-    device_class: window
-    name: "Window Cover"
-    id: window_cover
-    internal: false
-    
-    has_position: true
-    assumed_state: false
-    optimistic: false
-    
-    open_action:
-      - logger.log: "Opening Window a"
+  # important these are in script because esphome will yield during delay in script, but not otherwise.
+  - id: open_window_script
+    then:
+      - light.turn_on: relay_led
       - script.execute:
           id: set_current_operation
           value: esphome::cover::COVER_OPERATION_OPENING
@@ -239,9 +236,11 @@ cover:
       - script.execute:
           id: set_current_operation
           value: esphome::cover::COVER_OPERATION_IDLE
+      - light.turn_off: relay_led
 
-    close_action:
-      - logger.log: "Closing Window a"
+  - id: close_window_script
+    then:
+      - light.turn_on: relay_led    
       - script.execute:
           id: set_current_operation
           value: esphome::cover::COVER_OPERATION_CLOSING
@@ -255,6 +254,29 @@ cover:
       - script.execute:
           id: set_current_operation
           value: esphome::cover::COVER_OPERATION_IDLE
+      - light.turn_off: relay_led
+
+
+cover:
+  - platform: template
+    device_class: window
+    name: "Window Cover"
+    id: window_cover
+    internal: false
+    
+    has_position: true
+    assumed_state: false
+    optimistic: false
+    
+    open_action:
+      - logger.log: "Opening Window"
+      - script.execute: open_window_script
+
+
+    close_action:
+      - logger.log: "Closing Window"
+      - script.execute: close_window_script
+
 
 # time:
 #   - platform: sntp

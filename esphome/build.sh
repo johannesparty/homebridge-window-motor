@@ -23,7 +23,8 @@ else
 fi
 
 # Compile and upload each config
-for config in "${SELECTED_CONFIGS[@]}"; do
+for config_full in "${SELECTED_CONFIGS[@]}"; do
+  config="${config_full%.yaml}" # Remove the .yaml extension if present
   echo "🔧 Compiling: $config.yaml"
   if ! esphome compile "$config.yaml"; then
     echo "❌ Compile failed for $config.yaml"
