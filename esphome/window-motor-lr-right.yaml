@@ -2,7 +2,7 @@ substitutions:
     device_name: "window-motor-lr-right"
     device_entity: 'window-motor-lr-right'
     friendly_name: 'Window Motor LR Right'
-    operation_duration: 30s
-    command_duration: 5s
+    operation_duration: "50"
+    command_duration: "5"
     
 <<: !include window-motor-base2.yaml
