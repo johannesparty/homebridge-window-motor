@@ -1,4 +1,4 @@
-// Ratgdo device settings.
+// Window motor device settings.
 export interface WindowMotorDevice {
   address: string,
   firmwareVersion: string,
@@ -9,5 +9,3 @@ export interface WindowMotorDevice {
 export enum WindowMotorReservedNames {
   HOMEKIT_SWITCH_WINDOW_CLOSED = 'Homekit.Switch.WindowClosed',
 }
-
-

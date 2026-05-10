@@ -5,13 +5,14 @@
   <div class="text-left">
     <p>Welcome to <strong>homebridge-window-motor</strong>. To get started:
       <ol>
-        <li>Ensure you're running the latest <a href="https://ratgdo.github.io/esphome-window-motor/">Window Motor ESPHome firmware</a>.</li>
+        <li>Flash the included Window Motor ESPHome firmware to your ESP32.</li>
+        <li>Connect the ESP32 to the same network as Homebridge so it can be discovered via mDNS.</li>
       </ol>
     </p>
   </div>
   <div class="text-center">
     <br>
-      <button type="button" class="btn btn-primary" id="firstRun">Configure homebridge-ratgdo &rarr;</button>
+      <button type="button" class="btn btn-primary" id="firstRun">Configure homebridge-window-motor &rarr;</button>
     <br>
       To optimize performance and responsiveness, please make this plugin a <a target="_blank" href="https://github.com/homebridge/homebridge/wiki/Child-Bridges">child bridge</a> once you've completed configuration.
   </div>
@@ -66,14 +67,14 @@
 <div id="pageSupport" class="mt-4" style="display: none;">
   <h5>Introduction</h5>
     <p class="px-4">I hope you enjoy this plugin as much as I enjoy developing it. All my projects are labors of love. If you'd like to show your appreciation - 
-        <a target="_blank" href="https://github.com/schmidtparty/homebridge-window-motor">star this project on GitHub</A>
+        <a target="_blank" href="https://github.com/johannesparty/homebridge-window-motor">star this project on GitHub</A>
            and do some good in your community.</p>
 
     <div class="px-4">
       Plugins by <a target="_blank" href="https://github.com/schmidtparty">SchmidtParty</a>:
 
       <ul dir="auto">
-        <li><a target="_blank" href="https://github.com/schmidtparty/homebridge-window-motor">homebridge-window-motor: HomeKit integration for automated window opener.</a></li>
+        <li><a target="_blank" href="https://github.com/johannesparty/homebridge-window-motor">homebridge-window-motor: HomeKit integration for ESP32-driven window openers.</a></li>
 
       </ul>
     </div>
@@ -81,20 +82,17 @@
   <h5>Getting Started</h5>
     <ul dir="auto">
       <li>
-        <a target="_blank" href="https://github.com/schmidtparty/homebridge-window-motor#installation">Installation</a>: installing this plugin, including system requirements.
+        <a target="_blank" href="https://github.com/johannesparty/homebridge-window-motor#installation">Installation</a>: installing this plugin, including system requirements.
       </li>
       <li>
-        <a target="_blank" href="https://github.com/hjdhjd/homebridge-window-motor#notes">Additional Notes</a>: some things you should be aware of, including Window Motor-specific quirks.
+        <a target="_blank" href="https://github.com/johannesparty/homebridge-window-motor#readme">Additional Notes</a>: things to be aware of, including window-motor-specific quirks.
       </li>
     </ul>
 
   <h5>Advanced Topics</h5>
     <ul dir="auto">
       <li>
-        <a target="_blank" href="https://github.com/schmidtparty/homebridge-window-motor/blob/main/docs/FeatureOptions.md">Feature Options</a>: granular options to allow you to show or hide specific garage door and gate openers, and more.
-      </li>
-      <li>
-        <a target="_blank" href="https://github.com/schmidtparty/homebridge-window-motor/tree/main/esphome">ESPHome Firmware Customization</a>: precustomized Window Motor ESPHome firmware and configuration files. <b>This is completely unsupported and provided for convenience - you are on your own.</b>
+        <a target="_blank" href="https://github.com/johannesparty/homebridge-window-motor/tree/main/esphome">ESPHome Firmware</a>: ESPHome firmware and configuration files for the window motor controllers. <b>Provided as-is.</b>
       </li>
     </ul>
 

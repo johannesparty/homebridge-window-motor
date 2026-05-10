@@ -1,6 +1,7 @@
-/* Originally Copyright(C) 2017-2025, HJD (https://github.com/hjdhjd). All rights reserved.
- *
+/*
  * server.js: homebridge-window-motor webUI server API.
+ *
+ * Originally adapted from Copyright(C) 2017-2025, HJD (https://github.com/hjdhjd).
  */
 'use strict';
 

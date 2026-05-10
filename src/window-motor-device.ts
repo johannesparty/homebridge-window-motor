@@ -1,5 +1,5 @@
 import { API, CharacteristicValue, HAP, PlatformAccessory } from 'homebridge';
-import { HomebridgePluginLogging, type Nullable, acquireService, validService, validateName } from 'homebridge-plugin-utils';
+import { HomebridgePluginLogging, acquireService, validateName } from 'homebridge-plugin-utils';
 import { WINDOW_MOTOR_OPENCLOSE_DURATION, WINDOW_MOTOR_RELAY_DURATION } from './settings.js';
 import { WindowMotorDevice, WindowMotorReservedNames } from './window-motor-types.js';
 import { WindowMotorOptions } from './window-motor-options.js';
@@ -54,6 +54,11 @@ export class WindowMotorAccessory {
   private readonly platform: WindowMotorPlatform;
   private readonly status: WindowMotorStatus;
 
+  // Tracks the most recent in-flight command so we can detect when a command is sent
+  // but no state event ever arrives — useful for diagnosing the "I told it to open and
+  // nothing happened" failure mode.
+  private pendingCommand?: { topic: string, payload: string, sentAt: number, watchdog: NodeJS.Timeout };
+
   // The constructor initializes key variables and calls configureDevice().
   constructor(platform: WindowMotorPlatform, accessory: PlatformAccessory, switchAccessory: PlatformAccessory | undefined, device: WindowMotorDevice) {
 
@@ -83,7 +88,7 @@ export class WindowMotorAccessory {
     this.configureDevice();
   }
 
-  // Configure a garage door accessory for HomeKit.
+  // Configure the window motor accessory for HomeKit.
   private configureDevice(): void {
 
     // Clean out the context object.
@@ -166,7 +171,7 @@ export class WindowMotorAccessory {
     }
 
   
-    // Set the initial current and target door states to closed since windowmotor doesn't tell us initial state on startup.
+    // Set the initial current and target positions to closed since the device doesn't tell us its initial state on startup.
     service.updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
     service.updateCharacteristic(this.hap.Characteristic.PositionState, this.status.windowPositionState);
     service.updateCharacteristic(this.hap.Characteristic.CurrentPosition, this.status.windowCurrentPosition);
@@ -249,20 +254,21 @@ export class WindowMotorAccessory {
     return true;
   }
   
-  // Open or close the garage door.
+  // Open or close the window.
   private setWindowTargetPosition(value: CharacteristicValue): boolean {
 
-    // Understand what we're targeting.
     const target_position = value as number;
-    this.log.info('setWindowTargetPosition: %d', target_position);
+    this.log.info('setWindowTargetPosition: %d (availability=%s)', target_position, this.status.availability);
 
-    // If we have an invalid target state, we're done.
     if(target_position !== 0 && target_position !== 100) {
       this.log.error('target position must be 0 or 100: %s.', target_position);
       return false;
     }
 
-    // If this window door is read-only, we won't process any requests to set state.
+    if(!this.status.availability) {
+      this.log.warn('Issuing command while device is reported offline; the command may fail or the response may be delayed.');
+    }
+
     if(this.hints.readOnly) {
       this.log.info('Unable to operate window: read-only mode enabled.');
 
@@ -272,16 +278,11 @@ export class WindowMotorAccessory {
           updateCharacteristic(this.hap.Characteristic.TargetPosition, this.status.windowTargetPosition);
         return false;
       });
+      return false;
     }
-
-    // If we are already opening or closing the windowr, we assume the user wants to stop the garage door opener at it's current location.
-    // todo
-
-    // Set the window state, assuming we're not already there.
 
     this.log.info(`User-initiated window position change: ${target_position.toString()}`);
 
-    // Execute the command.
     void this.command('window', target_position === 0 ? 'close' : 'open');
 
     return true;
@@ -317,20 +318,11 @@ export class WindowMotorAccessory {
   // Update the state of the accessory.
   public updateState(event: EspHomeEvent): void {
 
-    // const camelCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-    // const windowService = this.accessory.getServiceById(this.hap.Service.Window, 'window_cover');
     const windowService = this.accessory.getService(this.hap.Service.Window);
     if(!windowService) {
       this.log.error('Unable to get Window Service');
       return;
     }
-
-    // const switchService = this.accessory.getServiceById(this.hap.Service.Switch, WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED);
-    //const switchService = this.accessory.getServiceById(this.hap.Service.Switch, 'Switch.WindowClosed');
-    //if (!switchService) {
-    //  this.log.error('did not get Switch Service');
-    //  return;
-    //}
 
     if (event.id !== 'availability') {
       this.log.info('got updateState with ' + util.inspect(event, { colors: true, depth: null, sorted: true }));
@@ -392,6 +384,14 @@ export class WindowMotorAccessory {
 
     case 'cover-window_cover': {
 
+      // Got a state event from the cover — any in-flight watchdog can be cleared.
+      if(this.pendingCommand) {
+        const elapsed = Date.now() - this.pendingCommand.sentAt;
+        this.log.info('Cover state event received %dms after %s/%s; clearing watchdog.',
+          elapsed, this.pendingCommand.topic, this.pendingCommand.payload);
+        this.clearPendingCommandWatchdog();
+      }
+
       const position = (event.position ?? 0) * 100;
 
       // event.current_operation is CLOSING, OPENING, IDLE 
@@ -449,23 +449,22 @@ export class WindowMotorAccessory {
     }
   }
 
-  // Utility function to transmit a command to ESPHome firmware
-  // Commands are sent as HTTP POST requests to the ESPHome API.
-  
-  // led,on
-  // led,off
-
-  // window,open
-  // window,close
-  // 
-  // virtual_window_sensor,on
-  // virtual_window_sensor,off
-  // 
+  // Utility function to transmit a command to the ESPHome firmware over HTTP.
+  // Supported topics:
+  //   led                     payload: on | off
+  //   window                  payload: open | close
+  //   virtual_window_sensor   payload: on | off
+  //   sensor_type             payload: none | gpio | virtual
+  //   relay_duration          payload: <seconds>
+  //   open_duration           payload: <seconds>
   private async command(topic: string, payload = ''): Promise<boolean> {
     let endpoint;
     let action;
 
-    this.log.info(`command(topic ${topic}, payload ${payload})`);
+    // Short correlation id so command -> response -> state-event can be matched in the log.
+    const cid = Math.random().toString(36).slice(2, 8);
+    const t0 = Date.now();
+    this.log.info('[cmd %s] command(topic=%s, payload=%s)', cid, topic, payload);
 
     switch(topic) {
 
@@ -490,7 +489,8 @@ export class WindowMotorAccessory {
         break;
 
       default:
-        this.log.error('Unknown window command received: %s.', payload);
+        this.log.error('[cmd %s] Unknown window command received: %s.', cid, payload);
+        return false;
       }
       break;
 
@@ -511,10 +511,10 @@ export class WindowMotorAccessory {
         break;
 
       default:
-        this.log.error('Unknown virtual_window_sensor command received: %s.', payload);
+        this.log.error('[cmd %s] Unknown virtual_window_sensor command received: %s.', cid, payload);
         return false;
       }
-      break;  
+      break;
 
     case 'sensor_type': // none, gpio, virtual
 
@@ -530,73 +530,122 @@ export class WindowMotorAccessory {
 
     case 'open_duration':
 
-      endpoint = 'number/open_duration';  
+      endpoint = 'number/open_duration';
       action = 'set?value=' + payload;
       break;
 
     default:
 
-      this.log.error('Unknown command received: %s - %s.', topic, payload);
+      this.log.error('[cmd %s] Unknown command received: %s - %s.', cid, topic, payload);
       return false;
+    }
+
+    const url = 'http://' + this.device.address + '/' + endpoint + '/' + action;
+
+    // For window-movement commands, set up a watchdog so we notice if no state event arrives.
+    if(topic === 'window') {
+      this.armPendingCommandWatchdog(cid, topic, payload);
     }
 
     try {
 
-      // Execute the action.
-      // TODO: consider adding timeout; see AbortController
-      const url = 'http://' + this.device.address + '/' + endpoint + '/' + action;
-      this.log.info('Sending command: '+url);
-      const response = await fetch(url, { 
-        body: JSON.stringify({}), 
-        method: 'POST' });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
 
-      if(!response?.ok) {
-        this.log.error('Unable to execute command: %s - %s.', topic, action);
+      this.log.info('[cmd %s] POST %s', cid, url);
+      const response = await fetch(url, {
+        body: JSON.stringify({}),
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const elapsed = Date.now() - t0;
+      this.log.info('[cmd %s] response: HTTP %d %s (%dms)', cid, response.status, response.statusText, elapsed);
+
+      if(!response.ok) {
+        // Try to surface the body — ESPHome typically returns plain text or a short error.
+        let bodyText = '';
+        try {
+          bodyText = (await response.text()).slice(0, 500);
+        } catch {
+          // ignore
+        }
+        this.log.error('[cmd %s] non-OK response for %s/%s: HTTP %d %s body=%s',
+          cid, topic, action, response.status, response.statusText, bodyText);
+        this.clearPendingCommandWatchdog();
         return false;
       }
 
     } catch(error) {
 
-      let errorMessage = '\n' + util.inspect(error, { colors: true, depth: null, sorted: true });
+      const elapsed = Date.now() - t0;
+      let errorMessage = '\n' + util.inspect(error, { depth: null, sorted: true });
 
-      if(error instanceof TypeError) {
+      if((error as Error)?.name === 'AbortError') {
+        errorMessage = 'fetch aborted after 10s timeout';
+      } else if(error instanceof TypeError) {
 
-        switch((error.cause as NodeJS.ErrnoException)?.code) {
+        const code = (error.cause as NodeJS.ErrnoException)?.code;
+        switch(code) {
 
         case 'ECONNRESET':
-
-          errorMessage = 'Connection to the WindowMotor controller has been reset';
+          errorMessage = 'Connection to the window motor controller has been reset';
           break;
 
         case 'EHOSTDOWN':
-
-          errorMessage = 'Connection to the WindowMotor controller has been reset';
+        case 'EHOSTUNREACH':
+          errorMessage = 'Window motor controller is unreachable (host down)';
           break;
 
         case 'ETIMEDOUT':
         case 'UND_ERR_BODY_TIMEOUT':
         case 'UND_ERR_CONNECT_TIMEOUT':
         case 'UND_ERR_HEADERS_TIMEOUT':
-
-          errorMessage = 'Connection to the WindowMotor controller has timed out';
-
+          errorMessage = 'Connection to the window motor controller has timed out';
           break;
 
         default:
-
-          errorMessage = ' ' + (error.cause as NodeJS.ErrnoException)?.code + ' (errno: ' + (error.cause as NodeJS.ErrnoException)?.errno?.toString() + ')\n' +
+          errorMessage = (code ?? 'unknown') + ' (errno: ' + (error.cause as NodeJS.ErrnoException)?.errno?.toString() + ')\n' +
               util.inspect(error.cause, { depth: null, sorted: true });
-
           break;
         }
       }
 
-      this.log.error('WindowMotor API error sending command:%s', errorMessage);
-
+      this.log.error('[cmd %s] window motor API error after %dms: %s', cid, elapsed, errorMessage);
+      this.clearPendingCommandWatchdog();
       return false;
     }
 
     return true;
+  }
+
+  // Arm a watchdog after sending a movement command. If we don't hear back via the
+  // ESPHome event stream within a reasonable window, log loudly so the failure mode
+  // (HomeKit said "open" but nothing happened) is visible in the logs.
+  private armPendingCommandWatchdog(cid: string, topic: string, payload: string): void {
+    this.clearPendingCommandWatchdog();
+
+    // open_action waits roughly relayDuration + openCloseDuration; give it a 5s margin.
+    const expectedMs = (this.hints.openCloseDuration + this.hints.relayDuration + 5) * 1000;
+
+    const watchdog = setTimeout(() => {
+      this.log.error('[cmd %s] WATCHDOG: no cover-window_cover state event observed within %dms of %s/%s. ' +
+        'The HTTP POST succeeded but the device did not report progress. ' +
+        'Check the device web UI at http://%s/ to see whether it actually moved, ' +
+        'and whether ESPHome event stream is connected (check for "open"/"ping" log lines from this plugin).',
+      cid, expectedMs, topic, payload, this.device.address);
+      this.pendingCommand = undefined;
+    }, expectedMs);
+
+    this.pendingCommand = { topic, payload, sentAt: Date.now(), watchdog };
+  }
+
+  private clearPendingCommandWatchdog(): void {
+    if(this.pendingCommand) {
+      clearTimeout(this.pendingCommand.watchdog);
+      this.pendingCommand = undefined;
+    }
   }
 
   
@@ -610,22 +659,19 @@ export class WindowMotorAccessory {
   // Utility function to return the name of this device.
   private get name(): string {
 
-    // We use the garage door service as the natural proxy for the name.
-    let name = this.accessory.getService(this.hap.Service.GarageDoorOpener)?.getCharacteristic(this.hap.Characteristic.Name).value as string;
+    // Prefer the Window service Name characteristic if set.
+    let name = this.accessory.getService(this.hap.Service.Window)?.getCharacteristic(this.hap.Characteristic.Name).value as string;
 
     if(name?.length) {
-
       return name;
     }
 
     name = this.accessory.displayName;
 
     if(name?.length) {
-
       return name;
     }
 
-    // If we don't have a name for the garage door service, return the device name from WindowMotor.
     return this.device.name;
   }
 

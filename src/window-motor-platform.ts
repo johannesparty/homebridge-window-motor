@@ -1,11 +1,11 @@
-import type { API /* ,Characteristic */, DynamicPlatformPlugin, Logging, PlatformAccessory, 
-  HAP, PlatformConfig /* ,Service as HomeBridgeService */ } from 'homebridge';
+import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory,
+  HAP, PlatformConfig } from 'homebridge';
 import { Bonjour, type Service as BonjourService } from 'bonjour-service';
 import { FeatureOptions, type Nullable, validateName } from 'homebridge-plugin-utils';
 
-import { 
-  PLATFORM_NAME, PLUGIN_NAME, 
-  WINDOW_MOTOR_AUTODISCOVERY_INTERVAL, WINDOW_MOTOR_AUTODISCOVERY_TYPE, WINDOW_MOTOR_AUTODISCOVERY_PROJECT_NAMES, 
+import {
+  PLATFORM_NAME, PLUGIN_NAME,
+  WINDOW_MOTOR_AUTODISCOVERY_INTERVAL, WINDOW_MOTOR_AUTODISCOVERY_TYPE, WINDOW_MOTOR_AUTODISCOVERY_PROJECT_NAMES,
   WINDOW_MOTOR_EVENT_API_HEARTBEAT_DURATION, WINDOW_MOTOR_HEARTBEAT_DURATION, WINDOW_MOTOR_HEARTBEAT_INTERVAL } from './settings.js';
 
 import { type WindowMotorOptions, featureOptionCategories, featureOptions } from './window-motor-options.js';
@@ -16,42 +16,26 @@ import net from 'node:net';
 import util from 'node:util';
 
 
-/**
- * HomebridgePlatform
- * This class is the main constructor for your plugin, this is where you should
- * parse the user config and discover/register accessories with Homebridge.
- */
 export class WindowMotorPlatform implements DynamicPlatformPlugin {
   private readonly accessories: PlatformAccessory[];
   public readonly api: API;
   private discoveredDevices: { [index: string]: boolean };
   private readonly espHomeEvents: { [index: string]: EventSource };
-  private readonly pingTimers: { [index: string]: NodeJS.Timeout } = {};
+  private readonly pingTimers: { [index: string]: NodeJS.Timeout };
   public featureOptions: FeatureOptions;
   public config: WindowMotorOptions;
-  // configOptions: string[]  
   public readonly configuredDevices: { [index: string]: WindowMotorAccessory };
   public readonly hap: HAP;
   public readonly log: Logging;
 
-  // public readonly Service: typeof HomeBridgeService;
-  // public readonly Characteristic: typeof Characteristic;
-  // this is used to track restored cached accessories
-  //public readonly accessories: Map<string, PlatformAccessory> = new Map();
-  // public readonly discoveredCacheUUIDs: string[] = [];
-
-
-  
   constructor(
     log: Logging,
     config: PlatformConfig,
     api: API) {
-    // public readonly config: PlatformConfig,
-      
+
     this.accessories = [];
     this.api = api;
     this.config = {};
-    // this.configOptions = [];
     this.configuredDevices = {};
     this.discoveredDevices = {};
     this.espHomeEvents = {};
@@ -60,9 +44,6 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     this.log = log;
     this.log.debug = this.debug.bind(this);
     this.pingTimers = {};
-
-    // this.Service = api.hap.Service;
-    // this.Characteristic = api.hap.Characteristic;
 
     this.log.debug('Finished constructing WindowMotorPlatform');
     if (!config) {
@@ -83,8 +64,6 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     // to start discovery of new accessories.
     api.on('didFinishLaunching', () => {
       log.debug('Executing didFinishLaunching callback');
-      // run the method to discover / register your devices as accessories
-      // this.discoverDevices();
       this.configureWindowMotorPlatform();
     });
 
@@ -130,7 +109,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     setInterval(() => mdnsBrowser.update(), WINDOW_MOTOR_AUTODISCOVERY_INTERVAL * 1000);
   }
 
-  // WINDOW_MOTOR ESPHome device discovery.
+  // Window motor ESPHome device discovery.
   private discoverWindowMotorDevice(service: BonjourService): void {
 
     // Define the EventSource error message type.
@@ -140,14 +119,14 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       type: string
     }
 
-    // We're only interested in ESPHome WINDOW_MOTOR devices (and compatible variants) with valid MAC and IP addresses. Otherwise, we're done.
+    // We're only interested in ESPHome window motor devices (and compatible variants) with valid MAC and IP addresses. Otherwise, we're done.
     if((!service.txt?.esphome_version && !service.txt?.version) || !service.txt?.mac || !service.addresses ||
       !WINDOW_MOTOR_AUTODISCOVERY_PROJECT_NAMES.some(project => (service.txt as Record<string, string>)?.project_name?.match(project))) {
 
       return;
     }
 
-    console.log('discoverWindowMotorDevice: ', util.inspect(service, { colors: true, depth: null, sorted: true }));
+    this.log.debug('discoverWindowMotorDevice: %s', util.inspect(service, { depth: null, sorted: true }));
 
     // We grab the first address provided for the ESPHome device.
     const address = service.addresses[0];
@@ -164,8 +143,10 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     }
 
     try {
-      // Connect to the WINDOW_MOTOR ESPHome events API.
-      this.espHomeEvents[mac] = new EventSource('http://' + address + '/events');
+      // Connect to the window motor ESPHome events API.
+      const eventsUrl = 'http://' + address + '/events';
+      window_motor_accessory.log.info('Connecting to ESPHome events API at %s', eventsUrl);
+      this.espHomeEvents[mac] = new EventSource(eventsUrl);
 
       // Handle errors in the events API.
       this.espHomeEvents[mac].addEventListener('error', (payload: ESError) => {
@@ -185,21 +166,21 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
           }
 
           if(message.startsWith('connect ECONNREFUSED ')) {
-            return 'Connection to the WINDOW_MOTOR controller refused';
+            return 'Connection to the window motor controller refused';
           }
 
           if(message.startsWith('connect ETIMEDOUT ')) {
-            return 'Connection to the WINDOW_MOTOR controller has timed out';
+            return 'Connection to the window motor controller has timed out';
           }
 
           if(message.startsWith('connect EHOSTDOWN ')) {
-            return 'Unable to connect to the WINDOW_MOTOR controller. The host appears to be down';
+            return 'Unable to connect to the window motor controller. The host appears to be down';
           }
 
           const errorMessages: { [index: string]: string } = {
-            'read ECONNRESET': 'Connection to the WINDOW_MOTOR controller has been reset',
-            'read ETIMEDOUT': 'Connection to the WINDOW_MOTOR controller has timed out while listening for events',
-            'unknown error.': 'An unknown error on the WINDOW_MOTOR controller has occurred. This will happen occasionally and can generally be ignored',
+            'read ECONNRESET': 'Connection to the window motor controller has been reset',
+            'read ETIMEDOUT': 'Connection to the window motor controller has timed out while listening for events',
+            'unknown error.': 'An unknown error on the window motor controller has occurred. This will happen occasionally and can generally be ignored',
           };
 
           return errorMessages[message] ?? errorMessage;
@@ -232,13 +213,12 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       // Capture log updates from the controller.
       this.espHomeEvents[mac].addEventListener('log', (message: MessageEvent<string>) => {
 
-        window_motor_accessory.log.debug('Log event received: %s', message);
-
-        // WINDOW_MOTOR occasionally sends empty status updates - we ignore them.
+        // The controller occasionally sends empty status updates - we ignore them.
         if(!message.data.length) {
           return;
         }
 
+        window_motor_accessory.log.debug('Log event received: %s', message.data);
       });
 
       // Capture state updates from the controller.
@@ -247,7 +227,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
         // Log the state event received.
         window_motor_accessory.log.debug('State event received: %s', util.inspect(message.data, { sorted: true }));
 
-        // WINDOW_MOTOR occasionally sends empty status updates - we ignore them.
+        // The controller occasionally sends empty status updates - we ignore them.
         if(!message.data.length) {
           return;
         }
@@ -263,23 +243,19 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
         window_motor_accessory.updateState(event);
       });
 
-      // Heartbeat the WINDOW_MOTOR controller at regular intervals. 
-      // We need to do this because the ESPHome firmware for WINDOW_MOTOR has a failsafe that will autoreboot the
-      // WINDOW_MOTOR every 15 minutes if it doesn't receive a native API connection. 
-      // Fortunately, the failsafe only looks for an open connection to the API, allowing us the
-      // opportunity to heartbeat it with a connection we periodically reopen.
+      // Heartbeat the controller at regular intervals.
+      // The ESPHome firmware has a failsafe that auto-reboots the device every 15 minutes if it
+      // doesn't receive a native API connection. The failsafe only checks for an open connection,
+      // so we periodically reopen one.
       const heartbeat = (): void => {
 
-        // Connect to the WINDOW_MOTOR, and setup our heartbeat to close after a configured duration.
         const socket = net.createConnection({ host: address, port: 6053 }, () => setTimeout(() => {
 
           socket.destroy();
         }, WINDOW_MOTOR_HEARTBEAT_DURATION * 1000));
 
-        // Handle heartbeat errors.
         socket.on('error', (err) => window_motor_accessory.log.debug('Heartbeat error: %s.', util.inspect(err, { sorted: true })));
 
-        // Perpetually restart our heartbeat when it ends.
         socket.on('close', () => setTimeout(() => heartbeat(), WINDOW_MOTOR_HEARTBEAT_INTERVAL * 1000));
       };
 
@@ -287,7 +263,7 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     } catch(error) {
 
       if(error instanceof Error) {
-        window_motor_accessory.log.error('WINDOW_MOTOR API error: %s', error.message);
+        window_motor_accessory.log.error('Window motor API error: %s', error.message);
       }
     }
   }
@@ -307,7 +283,6 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
 
     // See if we already know about this accessory or if it's truly new.
     let accessory = this.accessories.find(x => x.UUID === uuid);
-    // let accessory = Array.from(this.accessories.values()).find(x => x.UUID === uuid);
 
     // Our device details.
     const device = {
@@ -414,7 +389,8 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
     return this.configuredDevices[uuid];
   }
 
-  // Utility for debug logging.
+  // Utility for debug logging. Routes through log.error so messages are visible in normal Homebridge
+  // output when the plugin's `debug` config flag is on, regardless of the homebridge -D flag.
   public debug(message: string, ...parameters: unknown[]): void {
 
     if(this.config.debug) {
@@ -422,98 +398,4 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       this.log.error(util.format(message, ...parameters));
     }
   }
-
-
-  // /**
-  //  * This function is invoked when homebridge restores cached accessories from disk at startup.
-  //  * It should be used to set up event handlers for characteristics and update respective values.
-  //  */
-  // configureAccessory(accessory: PlatformAccessory) {
-  //   this.log.info('Loading accessory from cache:', accessory.displayName);
-
-  //   // add the restored accessory to the accessories cache, so we can track if it has already been registered
-  //   this.accessories.set(accessory.UUID, accessory);
-  // }
-
-  // /**
-  //  * This is an example method showing how to register discovered accessories.
-  //  * Accessories must only be registered once, previously created accessories
-  //  * must not be registered again to prevent "duplicate UUID" errors.
-  //  */
-  // discoverDevices() {
-  //   // EXAMPLE ONLY
-  //   // A real plugin you would discover accessories from the local network, cloud services
-  //   // or a user-defined array in the platform config.
-  //   const exampleDevices = [
-  //     {
-  //       exampleUniqueId: 'abc1234',
-  //       exampleDisplayName: 'Left Blind',
-  //       url: 'http://window-motor-lr-left.local/',
-  //     },
-  //     // {
-  //     //   exampleUniqueId: 'abc8790',
-  //     //   exampleDisplayName: 'Right Blind',
-  //     // },
-  //   ];
-
-  //   // loop over the discovered devices and register each one if it has not already been registered
-  //   for (const device of exampleDevices) {
-  //     // generate a unique id for the accessory this should be generated from
-  //     // something globally unique, but constant, for example, the device serial
-  //     // number or MAC address
-  //     const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
-
-  //     // see if an accessory with the same uuid has already been registered and restored from
-  //     // the cached devices we stored in the `configureAccessory` method above
-  //     const existingAccessory = this.accessories.get(uuid);
-
-  //     if (existingAccessory) {
-  //       // the accessory already exists
-  //       this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-
-  //       // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-  //       // existingAccessory.context.device = device;
-  //       // this.api.updatePlatformAccessories([existingAccessory]);
-
-  //       // create the accessory handler for the restored accessory
-  //       // this is imported from `platformAccessory.ts`
-  //       new WindowMotorAccessory(this, existingAccessory);
-
-  //       // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-  //       // remove platform accessories when no longer present
-  //       // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-  //       // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-  //     } else {
-  //       // the accessory does not yet exist, so we need to create it
-  //       this.log.info('Adding new accessory:', device.exampleDisplayName);
-
-  //       // create a new accessory
-  //       const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
-
-  //       // store a copy of the device object in the `accessory.context`
-  //       // the `context` property can be used to store any data about the accessory you may need
-  //       accessory.context.device = device;
-
-  //       // create the accessory handler for the newly create accessory
-  //       // this is imported from `platformAccessory.ts`
-  //       new WindowMotorAccessory(this, accessory);
-
-  //       // link the accessory to your platform
-  //       this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-  //     }
-
-  //     // push into discoveredCacheUUIDs
-  //     this.discoveredCacheUUIDs.push(uuid);
-  //   }
-
-  //   // you can also deal with accessories from the cache which are no longer present by removing them from Homebridge
-  //   // for example, if your plugin logs into a cloud account to retrieve a device list, and a user has previously removed a device
-  //   // from this cloud account, then this device will no longer be present in the device list but will still be in the Homebridge cache
-  //   for (const [uuid, accessory] of this.accessories) {
-  //     if (!this.discoveredCacheUUIDs.includes(uuid)) {
-  //       this.log.info('Removing existing accessory from cache:', accessory.displayName);
-  //       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-  //     }
-  //   }
-  // }
 }

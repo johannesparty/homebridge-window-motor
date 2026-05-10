@@ -11,6 +11,12 @@
         "type": "string",
         "required": true,
         "default": "Window Motor Plugin"
+      },
+      "debug": {
+        "title": "Debug logging",
+        "type": "boolean",
+        "default": false,
+        "description": "Emit verbose plugin debug output (shown at error level so it appears in normal Homebridge logs)."
       }
     }
   }

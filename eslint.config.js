@@ -1,9 +1,19 @@
 import eslint from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**'],
+    ignores: ['dist/**', 'homebridge-ui/public/lib/**'],
+  },
+  {
+    files: ['homebridge-ui/public/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        homebridge: 'readonly',
+      },
+    },
   },
   {
     rules: {

@@ -1,20 +1,20 @@
 {
   "name": "homebridge-window-motor",
   "displayName": "Homebridge Window Motor",
-  "icon": "homebridge-window-motor.png",
+  "icon": "https://raw.githubusercontent.com/johannesparty/homebridge-window-motor/main/branding/icon.png",
   "type": "module",
   "version": "0.7.6",
   "private": false,
-  "description": "A short description about what your plugin does.",
+  "description": "Homebridge plugin for ESP32-based DIY window opener motors running custom ESPHome firmware.",
   "author": "Johannes Schmidt",
-  "license": "TBD",
-  "homepage": "https://github.com/USERNAME/GITHUB_PROJECT_NAME#readme",
+  "license": "ISC",
+  "homepage": "https://github.com/johannesparty/homebridge-window-motor#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "git+https://github.com/johannesparty/homebridge-window-motor.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/johannesparty/homebridge-window-motor/issues"
   },
   "keywords": [
     "homebridge-plugin",
@@ -24,7 +24,7 @@
   ],
   "main": "dist/index.js",
   "engines": {
-    "node": "^18.20.4 || ^20.18.0 || ^22.10.0",
+    "node": "^18.20.4 || ^20.18.0 || ^22.10.0 || ^24.0.0",
     "homebridge": "^1.8.0 || ^2.0.0-beta.0"
   },
   "scripts": {
@@ -33,7 +33,7 @@
     "build-ui": "shx mkdir -p homebridge-ui/public/lib && shx cp \"node_modules/homebridge-plugin-utils/dist/ui/**/*.@(js|mjs){,.map}\" homebridge-ui/public/lib",
     "clean": "shx rm -rf dist homebridge-ui/public/lib",
     "prelint": "npm run build-ui",
-    "lint": "eslint --max-warnings=${ESLINT_MAX_WARNINGS:-\"-1\"} eslint.config.mjs src homebridge-ui/*.js homebridge-ui/public/**.mjs",
+    "lint": "eslint --max-warnings=${ESLINT_MAX_WARNINGS:-\"-1\"} eslint.config.js src homebridge-ui/*.js homebridge-ui/public/**.mjs",
     "postpublish": "npm run clean",
     "prepublishOnly": "npm run lint && npm run build"
   },

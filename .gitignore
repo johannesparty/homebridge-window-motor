@@ -4,6 +4,9 @@ dist
 # Ignore npmrc.
 .npmrc
 
+# Ignore Claude Code session state.
+.claude/
+
 # Ignore macOS attribute files.
 .DS_Store
 

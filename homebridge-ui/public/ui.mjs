@@ -1,6 +1,7 @@
-/* Copyright(C) 2017-2025, HJD (https://github.com/hjdhjd). All rights reserved.
+/*
+ * ui.mjs: Homebridge Window Motor webUI.
  *
- * ui.mjs: Homebridge Ratgdo webUI.
+ * Originally adapted from Copyright(C) 2017-2025, HJD (https://github.com/hjdhjd).
  */
 'use strict';
 
@@ -68,7 +69,6 @@ featureOptionsParams.getDevices = async () => {
 };
 
 
-// Instantiate the webUI. // tried WindowMotor, WindowMotorPlugin, homebridge-window-motor 
 const ui = new webUi({ featureOptions: featureOptionsParams, name: 'WindowMotor' });
 
 // Display the webUI.
