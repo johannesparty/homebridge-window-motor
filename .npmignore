@@ -1,6 +1,17 @@
 # Ignore source code
 src
 
+# Ignore Claude Code session state.
+.claude
+
+# Ignore IDE / build artifacts that shouldn't ship to npm.
+.idea
+**/.idea
+.esphome
+**/.esphome
+.DS_Store
+**/.DS_Store
+
 # ------------- Defaults ------------- #
 
 # gitHub actions
