@@ -23,9 +23,20 @@ esp32:
   board: esp32dev
 
 
-# Enable logging
+# Enable logging.
+# Suppress two specific cosmetic warnings caused by the homebridge-window-motor plugin's
+# heartbeat: it intentionally opens and abruptly closes a TCP socket on the native API
+# port every few minutes to keep the 15-min API failsafe satisfied without speaking the
+# protobuf protocol. Each abrupt close logs:
+#   [W][api.connection:NNN]: : Connection closed
+#   [W][component:NNN]: Component api set Warning flag: unspecified
+# Raising those two tags to ERROR silences only those messages; everything else still
+# logs at DEBUG.
 logger:
   level: DEBUG
+  logs:
+    api.connection: ERROR
+    component: ERROR
 
 # Enable Home Assistant API
 api:

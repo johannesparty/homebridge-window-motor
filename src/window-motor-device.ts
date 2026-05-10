@@ -324,10 +324,15 @@ export class WindowMotorAccessory {
       return;
     }
 
+    // Skip the per-event log for availability pings (every ~10s); only log when event is interesting.
+    // Format only defined fields.
     if (event.id !== 'availability') {
-      this.log.info('got updateState with ' + util.inspect(event, { colors: true, depth: null, sorted: true }));
+      const fields = Object.entries(event)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => `event.${k}: ${v}`)
+        .join(', ');
+      this.log.info(fields);
     }
-    this.log.info(`event.id: ${event.id}, event.state: ${event.state}, event.position: ${event.position}, event.value: ${event.value}`);
     switch(event.id) {
 
     case 'availability':
