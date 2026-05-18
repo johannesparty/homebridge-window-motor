@@ -358,8 +358,8 @@ export class WindowMotorPlatform implements DynamicPlatformPlugin {
       switchAccessory = this.accessories.find(x => x.UUID === switchUUID);
       if (!switchAccessory) {
         // Create a new accessory for the virtual switch.
-        this.log.info('%s: Adding virtual switch to HomeKit.', device.name + ' Window Closed');
-        switchAccessory = new this.api.platformAccessory(validateName(device.name + ' Window Closed'), switchUUID);
+        this.log.info('%s: Adding virtual switch to HomeKit.', device.name + ' Is Closed');
+        switchAccessory = new this.api.platformAccessory(validateName(device.name + ' Is Closed'), switchUUID);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [switchAccessory]);
         this.accessories.push(switchAccessory);
       }

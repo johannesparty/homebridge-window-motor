@@ -47,6 +47,45 @@ The plugin auto-discovers devices — no per-device config is required. Per-devi
 - **Window > RelayDuration** — seconds to hold the relay during a movement command (default 5).
 - **Log > Opener** — verbose logging of window events.
 
+## Using the virtual sensor switch
+
+If your window motor doesn't have a wired contact sensor but you do have a separate HomeKit window/contact sensor nearby, you can use this plugin's virtual switch to feed that sensor's state back into the motor. The motor needs to know whether the window is currently open or closed so its `check_window_sensor` script can correct the cover position if it drifts (e.g. after a manual operation or a reboot).
+
+### Plugin setup
+
+In the plugin's Feature Options UI, for each device:
+
+1. Enable **Window > Homekit.Switch.WindowClosed** ("Add a virtual switch to indicate window closed").
+2. Make sure **Window > Builtin.Closed.Sensor** is **not** checked. The wired sensor takes precedence and would override the virtual switch.
+
+Restart Homebridge. A new switch accessory named `<device> Is Closed` will appear in HomeKit alongside the window itself.
+
+### HomeKit automations — mirror the contact sensor
+
+Create two automations in the Home app so that the contact sensor drives the virtual switch:
+
+- **When** "<window sensor> detects window closed", **turn on** "<device> Is Closed".
+- **When** "<window sensor> detects window opened", **turn off** "<device> Is Closed".
+
+That's enough for normal operation. But after a Homebridge restart, an iPad/Apple TV hub blip, or any other interruption the switch state can drift from the actual sensor state, because the automations only fire on change events. The next two automations close that gap by re-syncing on a timer.
+
+### Periodic re-sync via a timer
+
+Add a recurring trigger. There are a few ways to do this in HomeKit; one that works well is [homebridge-schedule](https://github.com/kbrashears5/homebridge-schedule) by @kbrashears5. Configure it as a virtual switch with a cron string:
+
+```
+*/15 * * * *
+```
+
+That fires every 15 minutes. (An Interval-based plugin or any other recurring trigger works equally well — what matters is that something in HomeKit toggles on a fixed cadence.)
+
+Then create two more automations driven by the timer:
+
+- **When** the timer switch turns on, **only if** the window contact sensor reads *closed*, **turn on** "<device> Is Closed".
+- **When** the timer switch turns on, **only if** the window contact sensor reads *open*, **turn off** "<device> Is Closed".
+
+With these in place, even if the change-driven automations miss an event (HomeKit restart, hub offline, plugin restart), the state is reconciled within 15 minutes.
+
 ## ESPHome firmware
 
 The ESPHome configuration files in [esphome/](./esphome) target the LilyGo T-Relay board. Key features:

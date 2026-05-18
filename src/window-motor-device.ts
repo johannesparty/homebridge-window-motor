@@ -229,8 +229,8 @@ export class WindowMotorAccessory {
 
 
     // Acquire the service.
-    const service = acquireService(this.hap, this.switchAccessory, this.hap.Service.Switch, 
-      this.name + ' Closed', WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED);
+    const service = acquireService(this.hap, this.switchAccessory, this.hap.Service.Switch,
+      this.name + ' Is Closed', WindowMotorReservedNames.HOMEKIT_SWITCH_WINDOW_CLOSED);
 
     if(!service) {
       this.log.error('Unable to add the Windows Closed Homekit Switch.');
