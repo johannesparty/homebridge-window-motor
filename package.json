@@ -3,7 +3,7 @@
   "displayName": "Homebridge Window Motor",
   "icon": "https://raw.githubusercontent.com/johannesparty/homebridge-window-motor/main/branding/icon.png",
   "type": "module",
-  "version": "0.7.7-beta.2",
+  "version": "0.7.7-beta.3",
   "private": false,
   "description": "Homebridge plugin for ESP32-based DIY window opener motors running custom ESPHome firmware.",
   "author": "Johannes Schmidt",
