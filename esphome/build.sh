@@ -6,7 +6,7 @@ if [ -z "$VIRTUAL_ENV_PROMPT" ] && [ -f ~/esphome-env/bin/activate ]; then
 fi
 
 CONFIGS=(
-  "window-motor-test-1"
+  # "window-motor-test-1"
   "window-motor-bed1-left"
   "window-motor-bed1-right"
   "window-motor-lr-right"
