@@ -205,7 +205,12 @@ script:
                 id(sensor_type).state != "none" && 
                 id(window_cover).current_operation ==  COVER_OPERATION_IDLE;
           then:
-            - logger.log: "Checking window sensor"
+            # Runs every 60s when the cover is idle. Explicitly DEBUG so the
+            # current global "level: DEBUG" still shows it; lower to VERBOSE
+            # later to suppress without touching anything else.
+            - logger.log:
+                format: "Checking window sensor"
+                level: DEBUG
             - if:
                 condition:
                   - binary_sensor.is_on: combined_window_sensor
@@ -228,7 +233,10 @@ script:
                             id: set_position
                             value: esphome::cover::COVER_OPEN
           else:
-            - logger.log: "skipping window sensor check"         
+            # Mirror counterpart of "Checking window sensor"; same DEBUG treatment.
+            - logger.log:
+                format: "skipping window sensor check"
+                level: DEBUG
 
   # important these are in script because esphome will yield during delay in script, but not otherwise.
   - id: open_window_script
