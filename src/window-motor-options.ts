@@ -33,8 +33,12 @@ export const featureOptions: { [index: string]: FeatureOptionEntry[] } = {
     { default: false, description: 'Make this window read-only by ignoring open and close requests from HomeKit.', name: 'ReadOnly' },
     { default: false,  description: 'Motor includes connected window closed sensor.', name: 'Builtin.Closed.Sensor' },
     { default: false, description: 'Add a virtual switch to indicate window closed (ignored if connected sensor)', name: 'Homekit.Switch.WindowClosed' },
-    { default: true, defaultValue: WINDOW_MOTOR_OPENCLOSE_DURATION, description: 'Time to open or close window', name: 'OpenCloseDuration' },
-    { default: true, defaultValue: WINDOW_MOTOR_RELAY_DURATION, description: 'Time to operate relay for open and close', name: 'RelayDuration' },
+    { default: true, defaultValue: WINDOW_MOTOR_OPENCLOSE_DURATION,
+      description: 'Seconds the window takes to fully open or close (when cover is reported OPEN/CLOSED). Uncheck per-device to use global.',
+      name: 'OpenCloseDuration' },
+    { default: true, defaultValue: WINDOW_MOTOR_RELAY_DURATION,
+      description: 'Seconds to hold the relay closed when pulsing the motor controller ("button press" length). Uncheck per-device to use global.',
+      name: 'RelayDuration' },
   ],
 
 };

@@ -125,8 +125,19 @@ export class WindowMotorAccessory {
       this.hints.sensorType = 'virtual';
     }
 
-    this.hints.openCloseDuration = this.platform.featureOptions.getInteger('Window.OpenCloseDuration', this.device.mac) ?? WINDOW_MOTOR_OPENCLOSE_DURATION;
-    this.hints.relayDuration = this.platform.featureOptions.getInteger('Window.RelayDuration', this.device.mac) ?? WINDOW_MOTOR_RELAY_DURATION;
+    // For value-centric options: a per-device "Disable" entry (what the UI writes when you uncheck
+    // an option in the device's column) short-circuits to null in homebridge-plugin-utils and stops
+    // the resolver from looking at the global value. That's surprising for duration-style options
+    // where "disable" doesn't really mean anything — users expect "uncheck = use global". So we
+    // explicitly fall back to the global lookup before defaulting to the hard-coded constant.
+    this.hints.openCloseDuration =
+      this.platform.featureOptions.getInteger('Window.OpenCloseDuration', this.device.mac) ??
+      this.platform.featureOptions.getInteger('Window.OpenCloseDuration') ??
+      WINDOW_MOTOR_OPENCLOSE_DURATION;
+    this.hints.relayDuration =
+      this.platform.featureOptions.getInteger('Window.RelayDuration', this.device.mac) ??
+      this.platform.featureOptions.getInteger('Window.RelayDuration') ??
+      WINDOW_MOTOR_RELAY_DURATION;
     if(this.hints.readOnly) {
       this.log.info('Window opener is read-only. The opener will not respond to open and close requests from HomeKit.');
     }
